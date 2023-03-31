@@ -71,7 +71,9 @@
 
 (defn- coll->css-named-grid-rows [coll]
   (transduce (comp (map (su/wrap "[" "]"))
-                   (map #(str % " auto ")))
+                   (map #(str % (if (= "[yHEADER]" %)
+                                  " 1.5rem "
+                                  " auto "))))
              str
              coll))
 
@@ -433,7 +435,7 @@
                              (.preventDefault e)
                              (arrow-pos! :down)))))
         (dom/props
-          {:class ["w-full" "inline-grid" "bg-amber-300" :overflow-auto]
+          {:class ["w-full" "h-full" "inline-grid" "bg-amber-300" :overflow-auto]
            :style {:overscroll-behavior-x :none
                    :gap                   :1px
                    :grid-template-columns css-grid-columns
@@ -512,5 +514,4 @@
                      :cell/x        5
                      :cell/y        5
                      :cell/form-str "(sleep 1000)\n(repeatedly 10 #(rand-int 10))"}]}]))
-
 

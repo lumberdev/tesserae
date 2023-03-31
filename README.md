@@ -1,7 +1,9 @@
 # Tesserae
 
+![screenshot](doc/img/screenshot.png)
+
 ### What is it? 
-Currently it's a spreadsheet where cells:
+Currently, it's a spreadsheet where cells:
 1. run user Clojure code async and in parallel
 2. reactively re-run when upstream cells update
 3. can run on schedule (e.g. "every 5 seconds")
@@ -31,9 +33,10 @@ Used internally in prod at [Lumber](https://lumber.dev/) but also very alpha!
 - UI additions: multiple sheets, search, users, permissions... the whole shebang!
 
 ## Thanks
-As of this commit Tesserae is a lean **1795 LoC**!
-That's largely thanks to Hyperfiddle's [Electric](https://github.com/hyperfiddle/electric)
-and Juji's [Datalevin](https://github.com/juji-io/datalevin).
+As of this commit Tesserae is a lean **1766 LoC**!
+This made possible largely thanks to Hyperfiddle's [Electric](https://github.com/hyperfiddle/electric),
+Borkdude's [sci](https://github.com/babashka/sci) and
+Juji's [Datalevin](https://github.com/juji-io/datalevin).
 
 ## License
 
