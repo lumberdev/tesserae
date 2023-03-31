@@ -1,0 +1,22 @@
+<!-- Options: http://logback.qos.ch/manual/layouts.html -->
+<configuration scan="true" scanPeriod="5 seconds">
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%highlight(%-5level) %logger: %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <logger name="hyperfiddle" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="hyperfiddle.electric-impl.runtime" level="WARN" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+    <logger name="hyperfiddle.electric-jetty-adapter" level="WARN" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+</configuration>

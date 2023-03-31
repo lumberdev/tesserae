@@ -1,0 +1,105 @@
+{:db/id         1,
+ :db/created-at 1680228142013,
+ :db/updated-at 1680228244658,
+ :dev-id        "demo",
+ :sheet/cells
+ [{:cell/ret        (5 9 9 6 6 4 4 7 8 4),
+   :cell/schedule
+   {:db/id           6,
+    :db/created-at   1680288594217,
+    :db/updated-at   1680289875190,
+    :schedule/repeat [:period #time/duration "PT5S"],
+    :schedule/next   #time/date-time "2023-03-31T12:11:14.172961",
+    :schedule/text   "every 5 sec",
+    :schedule/from   #time/date-time "2023-03-31T11:49:54.172961"},
+   :cell/ret-str    "(5 9 9 6 6 4 4 7 8 4)",
+   :cell/name       "run-clj",
+   :cell/y          5,
+   :db/id           2,
+   :cell/pos        [5 5],
+   :cell/form-str   "(sleep 1000)\n(repeatedly 10 #(rand-int 10))",
+   :db/updated-at   1680289875190,
+   :cell/x          5,
+   :cell/exception? false,
+   :db/created-at   1680228142013}
+  {:cell/ret
+   #:tesserae.ui.render{:as :hiccup,
+                        :val
+                        [:div
+                         [:div.font-bold "it renders hiccup!"]
+                         [:ol
+                          [:li "list item " 1]
+                          [:li "list item " 2]
+                          [:li "list item " 3]
+                          [:li "list item " 4]
+                          [:li "list item " 5]
+                          [:li "list item " 6]
+                          [:li "list item " 7]
+                          [:li "list item " 8]
+                          [:li "list item " 9]
+                          [:li "list item " 10]]]},
+   :cell/ret-str
+   "{:tesserae.ui.render/as :hiccup, :tesserae.ui.render/val [:div [:div.font-bold \"it renders hiccup!\"] [:ol [:li \"list item \" 1] [:li \"list item \" 2] [:li \"list item \" 3] [:li \"list item \" 4] [:li \"list item \" 5] [:li \"list item \" 6] [:li \"list item \" 7] [:li \"list item \" 8] [:li \"list item \" 9] [:li \"list item \" 10]]]}",
+   :cell/y          3,
+   :db/id           3,
+   :cell/pos        [3 3],
+   :cell/form-str
+   "(render/as\n :hiccup\n [:div\n  [:div.font-bold\n   \"it renders hiccup!\"]\n  (into [:ol]\n        (map (fn [i] [:li \"list item \" i]))\n        (range 1 11))])",
+   :db/updated-at   1680288625914,
+   :cell/x          3,
+   :cell/exception? false,
+   :db/created-at   1680288327761}
+  {:cell/ret        "double click a cell to show its code",
+   :cell/ret-str    "\"double click a cell to show its code\"",
+   :cell/y          3,
+   :db/id           4,
+   :cell/pos        [5 3],
+   :cell/form-str   "double click a cell to show its code",
+   :db/updated-at   1680288652310,
+   :cell/x          5,
+   :cell/exception? false,
+   :db/created-at   1680288520257}
+  {:cell/ret        "👇 this code runs on a schedule👇",
+   :cell/ret-str    "\"👇 this code runs on a schedule👇\"",
+   :cell/y          4,
+   :db/id           5,
+   :cell/pos        [5 4],
+   :cell/form-str   "👇 this code runs on a schedule👇",
+   :db/updated-at   1680289104312,
+   :cell/x          5,
+   :cell/exception? false,
+   :db/created-at   1680288525402}
+  {:db/id         7,
+   :db/created-at 1680288668949,
+   :db/updated-at 1680288668963,
+   :cell/pos      [6 3],
+   :cell/x        6,
+   :cell/y        3}
+  {:db/id         8,
+   :db/created-at 1680289112709,
+   :db/updated-at 1680289112717,
+   :cell/pos      [6 4],
+   :cell/x        6,
+   :cell/y        4}
+  {:cell/ret-pending? true,
+   :cell/refs         [#:db{:id 2}],
+   :cell/ret
+   #:tesserae.ui.render{:as :hiccup,
+                        :val
+                        [:div
+                         [:div
+                          "this code references the cell on the left"]
+                         [:div
+                          "and will update each time the other cell updates"]
+                         [:pre "(8 7 5 6 4 2 3 5 3 1)"]]},
+   :cell/ret-str
+   "{:tesserae.ui.render/as :hiccup, :tesserae.ui.render/val [:div [:div \"this code references the cell on the left\"] [:div \"and will update each time the other cell updates\"] [:pre \"(8 7 5 6 4 2 3 5 3 1)\"]]}",
+   :cell/y            5,
+   :db/id             9,
+   :cell/pos          [6 5],
+   :cell/form-str
+   "(sleep 1000)\n(render/as\n :hiccup\n [:div\n  [:div \"this code references the cell on the left\"]\n  [:div \"and will update each time the other cell updates\"]\n  [:pre (pr-str ($ \"run-clj\"))]])",
+   :db/updated-at     1680289875202,
+   :cell/x            6,
+   :cell/exception?   false,
+   :db/created-at     1680289137993}]}

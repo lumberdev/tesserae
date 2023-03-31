@@ -1,0 +1,24 @@
+;; shadow-cljs configuration
+{:deps     {:aliases [:dev/cljs :dev]}
+ :jvm-opts ["-Xss3m"]
+ :builds
+ {:tesserae {:target     :browser
+             :output-dir "resources/public/js/compiled"
+             :asset-path "/js/compiled"
+
+             :modules    {:main {:entries [tesserae.ui.app]}}
+
+             :devtools
+             {
+              ;:before-load yam.ui.app/stop
+              ;; after live-reloading finishes call this function
+              ;:after-load  yam.ui.app/start
+              ;; serve the public directory over http at port 8700
+              ;:http-root   "public"
+              ;:http-port   8700
+              :preloads        [devtools.preload]
+              :hud             #{:errors :progress}
+              :ignore-warnings true
+              :loader-mode     :default                     ; faster reload
+              }
+             }}}

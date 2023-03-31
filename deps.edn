@@ -1,0 +1,60 @@
+{:paths ["src" "resources"]
+ :deps  {org.clojure/clojure            {:mvn/version "1.11.1"}
+         stuffs/stuffs                  {:git/url "https://github.com/den1k/stuffs"
+                                         :sha     "af6434270ba6444ad3489ede7c684a099e31328c"}
+
+         http-kit/http-kit              {:mvn/version "2.6.0"}
+         ring/ring-core                 {:mvn/version "1.9.6"}
+         ring-oauth2/ring-oauth2        {#_#_:mvn/version "0.2.0"
+                                         :git/url "https://github.com/jamiepratt/ring-oauth2"
+                                         :sha     "95f004f7171ac21d68af16f620ca6b0211ca63ba"}
+         ring-basic-authentication/ring-basic-authentication
+         {:mvn/version "1.1.1"}
+         ring/ring-defaults             {:mvn/version "0.3.4"}
+         metosin/reitit                 {:mvn/version "0.5.18"}
+
+
+         com.hyperfiddle/electric       {:git/url "https://github.com/hyperfiddle/electric"
+                                         :sha     "7ef1612c9659d1e88f2f41223f5c7c045a5eb399"
+                                         #_"cd748d059c0035cbbb8140f4c829b200fc374d36"}
+         info.sunng/ring-jetty9-adapter {:mvn/version "0.14.3"
+                                         :exclusions  [org.slf4j/slf4j-api
+                                                       info.sunng/ring-jetty9-adapter-http3]}
+         ch.qos.logback/logback-classic {:mvn/version "1.4.5"}
+         thi.ng/geom                    {:mvn/version "1.0.0"}
+         cljfmt/cljfmt                  {:mvn/version "0.9.2"}
+         borkdude/sci                   {:mvn/version "0.2.7"}
+         instaparse/instaparse          {:mvn/version "1.4.12"}
+         ;borkdude/edamame {:mvn/version }
+         datalevin/datalevin            {:mvn/version "0.8.7"
+                                         #_#_#_#_:git/url "https://github.com/juji-io/datalevin"
+                                                 :sha "885c66a0e7045dbcaff470121fa93bb9ba871027"}
+         }
+ :aliases
+ {:prod {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
+                    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}
+  :dev  {:jvm-opts      ["--add-opens=java.base/java.nio=ALL-UNNAMED"
+                         "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+                         "-Xss3m"]
+         :extra-paths   ["dev"]
+         :override-deps {stuffs/stuffs            {:local/root "../../clojure/stuffs"}
+                         com.hyperfiddle/electric {:local/root "../../clojure/electric"}
+                         #_#_datalevin/datalevin {:local/root "../../clojure/datalevin"}
+                         }
+         :extra-deps    {org.clojure/clojurescript {:mvn/version "1.11.60"}
+                         thheller/shadow-cljs      {:mvn/version "2.20.20"}
+                         binaryage/devtools        {:mvn/version "1.0.6"}}
+         }
+  :demo {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
+                    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}
+  :shadow-cljs
+  {:extra-deps {org.clojure/clojurescript {:mvn/version "1.11.60"}
+                thheller/shadow-cljs      {:mvn/version "2.20.20"}}
+   :main-opts  ["-m" "shadow.cljs.devtools.cli"]
+   ;; deeper stack for shadow-cljs w/ photon compilation
+   :jvm-opts   ["-Xss3m"]}
+  :dev/cljs
+  {:extra-deps
+   {thheller/shadow-cljs {:mvn/version "2.20.20"}
+    binaryage/devtools   {:mvn/version "1.0.6"}}
+   :jvm-opts ["-Xss3m"]}}}
