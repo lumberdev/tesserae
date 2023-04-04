@@ -24,6 +24,26 @@ Start a clojure repl with the :dev/cljs alias.
 Go to `tesserae.serve`, load the file. Shadow-cljs should start up.
 Run `(-main)` or `(mount/start)` to boot up the server, db, listeners etc.
 
+### Extending Tesserae
+
+**Injecting user code into the eval context:**  
+Custom namespaces and bindings can be added on startup using mount args.  
+The values of `namespaces` map, if they're symbols, have to be on the classpath and will automatically be required.  
+The values of the `bindings` map will be required and resolved if they are fully qualified symbols
+or otherwise left as their identity.  
+
+For example:
+
+```clojure
+(-> (mount/with-args
+      {:tesserae.db/dir          "folder-in-project-root/data/datalevin/db"
+       :tesserae.eval/namespaces {'walk 'clojure.walk
+                                  'my-ns {'my-fn (fn [x] (println :foo x))}}
+       :tesserae.eval/bindings   {'println `println
+                                  'debug   (fn [& args] (apply println ::dbg args))}})
+    (mount/start))
+```
+
 ## Status
 Used internally in prod at [Lumber](https://lumber.dev/) but also very alpha!
 

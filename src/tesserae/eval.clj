@@ -44,49 +44,61 @@
     (let [$name (comp uir/value :cell/ret cell-by-name)]
       {'$ $name})))
 
+(defn namespaces [alias-sym->ns-sym-or-resolved-ns-map]
+  (update-vals
+    alias-sym->ns-sym-or-resolved-ns-map
+    (fn [ns-sym-or-resolved-ns-map]
+       (if (symbol? ns-sym-or-resolved-ns-map)
+         (do
+           (require ns-sym-or-resolved-ns-map)
+           (-> (ns-publics ns-sym-or-resolved-ns-map)
+               (update-vals deref)))
+         ns-sym-or-resolved-ns-map))))
+
+(defn bindings [sym->qualified-sym-or-var]
+  (update-vals
+    sym->qualified-sym-or-var
+    (fn [qualified-sym-or-var]
+      (cond-> qualified-sym-or-var
+        (qualified-symbol? qualified-sym-or-var) requiring-resolve))))
+
 (defstate sci-ctx
   :start
-  (let [fns        (sheet-fns db/conn)
-        namespaces {'db            (-> (ns-publics 'tesserae.db)
-                                       (update-vals deref))
-                    'su            (-> (ns-publics 'stuffs.util)
-                                       (update-vals deref))
-                    'x             (-> (ns-publics 'net.cgrand.xforms)
-                                       (update-vals deref))
-                    'str           (-> (ns-publics 'clojure.string)
-                                       (update-vals deref))
-                    'http          (reduce-kv
-                                     (fn [out k v]
-                                       (let [f (deref v)]
-                                         (assoc
-                                           out
-                                           k
-                                           (if (contains? #{'request 'get 'post 'patch 'put} k)
-                                             (comp deref f)
-                                             f))))
-                                     {}
-                                     (ns-publics 'org.httpkit.client))
-                    'render        (-> (ns-publics 'tesserae.ui.render)
-                                       (update-vals deref))
-                    't             (-> (ns-publics 'tick.core)
-                                       (update-vals deref))}
-        bindings   (into
-                     fns
-                     {'help    (constantly
-                                 {:namespaces
-                                  (update-vals namespaces keys)})
-                      'slurp   slurp
-                      ;; debug
-                      'sleep   (fn [ms] (Thread/sleep ms))
-                      ;'ide       ide
-                      ;'idr       idr
-                      ;'selr      sel-ret
-                      ;'cellr     cell-ret
-                      'println println
-                      'tap>    tap>})]
+  (let [fns  (sheet-fns db/conn)
+        nss  (merge
+               {'http (do
+                        (require 'org.httpkit.client)
+                        (reduce-kv
+                          (fn [out k v]
+                            (let [f (deref v)]
+                              (assoc
+                                out
+                                k
+                                (if (contains? #{'request 'get 'post 'patch 'put} k)
+                                  (comp deref f)
+                                  f))))
+                          {}
+                          (ns-publics 'org.httpkit.client)))}
+               (namespaces {'db     'tesserae.db
+                            'su     'stuffs.util
+                            'x      'net.cgrand.xforms
+                            'str    'clojure.string
+                            'render 'tesserae.ui.render
+                            't      'tick.core})
+               (some-> (mount/args) ::namespaces namespaces))
+        bdgs (merge
+               fns
+               {'help (constantly
+                        {:namespaces
+                         (update-vals nss keys)})}
+               (bindings {slurp    `slurp
+                          'sleep   (fn [ms] (Thread/sleep ms))
+                          'println println
+                          'tap>    tap>})
+               (some-> (mount/args) ::bindings bindings))]
     (sci/init
-      {:bindings   bindings
-       :namespaces namespaces})))
+      {:bindings   bdgs
+       :namespaces nss})))
 
 ;; unused
 #_(defonce current-ns
@@ -471,11 +483,15 @@
   (db/transact! [])
   (mount/start #'db/conn)
   (mount/start)
+  (mount/stop)
   (mount/start #'db-eval-form-str-listener)
   (mount/start #'db-eval-refs-listener)
+  (mount/running-states)
   ;(mount/start #'db/conn)
   ;(mount/running-states)
   (mount/stop #'db-eval-form-str-listener #'db-eval-refs-listener)
+  (mount/stop #'db-eval-form-str-listener #'db-eval-refs-listener
+              #'eval-schedule-listener)
   #_(db/transact! [[:db/retract 6 :cell/refs]
                    [:db/add 6 :cell/refs 18]])
 

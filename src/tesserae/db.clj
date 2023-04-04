@@ -7,7 +7,8 @@
             [stuffs.util :as su]
             [stuffs.mount :as smount]))
 
-(def db-dir "data/tesserae/datalevin/db")
+(defn db-dir []
+  (or (::dir (mount/args)) "data/tesserae/datalevin/db"))
 
 (def schema
   (merge
@@ -44,7 +45,7 @@
 
 (defstate ^{:on-reload :noop} conn
   :start (let [conn
-               (d/create-conn db-dir
+               (d/create-conn (db-dir)
                               schema
                               {:auto-entity-time? true
                                :validate-data?    env/dev?})]
@@ -70,5 +71,5 @@
   (mount/stop #'conn)
   (mount/start #'conn)
   (smount/with-restart ['conn]
-    (su/delete-directory-recursive db-dir))
+    (su/delete-directory-recursive (db-dir)))
   )
