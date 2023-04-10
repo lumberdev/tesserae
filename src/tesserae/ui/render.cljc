@@ -12,9 +12,11 @@
       x))
 
 (defn as [t v]
-  {:pre [(#{:html :hiccup :ui/inc-dec :ui/button} t)]}
+  {:pre [(#{:html :hiccup :ui/inc-dec :ui/button :vegalite} t)]}
   {::as t
-   ::val v})
+   ::val (case t
+           :vegalite (su/write-json-string v)
+           v)})
 
 #?(:clj
    (defn ->html-str [x]

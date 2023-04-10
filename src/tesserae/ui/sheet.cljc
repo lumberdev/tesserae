@@ -27,7 +27,9 @@
 (defn setxx [x] (reset! xx x))
 
 (defonce dbg-html (atom nil))
-(defn sethtml [x] (reset! dbg-html x))
+(defn sethtml [x] (reset! dbg-html x) :done)
+(defonce dbg-vl (atom nil))
+(defn setvl [x] (reset! dbg-vl (some-> x su/write-json-string)) :done)
 
 (e/defn AtomPre [label a]
   (let [v  (e/watch a)
@@ -115,6 +117,16 @@
 
 (def !editor-cell-pos (atom nil))
 
+(e/defn VegaLiteEmbed [json-spec]
+  (e/client
+    (let [css-id (str (gensym "vegalite"))]
+      (dom/div (dom/props {:id css-id}))
+      (js/vegaEmbed (str "#" css-id)
+                    (j/assoc! (js/JSON.parse json-spec)
+                              "$schema" "https://vega.github.io/schema/vega-lite/v5.json",)
+                    (clj->js {:renderer "svg"}))
+      nil)))
+
 (e/defn IncDecButtons [state cb]
   (dom/div
     (dom/button
@@ -149,6 +161,7 @@
             ret
             (cond
               (or (number? ret) (string? ret)) (e/client (dom/text (str ret)))
+              (= :vegalite (uir/content-type ret)) (new VegaLiteEmbed (uir/value ret))
               (= :ui/button (uir/content-type ret)) (e/client
                                                       (let [state (uir/value ret)]
                                                         (dom/div
@@ -476,6 +489,8 @@
                      {:cell/pos pos :cell/x x :cell/y y :sheet/_cells {:db/id id}})))))))))
 
 (e/defn Debug []
+  (when-let [vega-json-spec (e/watch dbg-vl)]
+    (new VegaLiteEmbed vega-json-spec))
   (when-let [html (e/watch dbg-html)]
     (e/client
       (dom/div
@@ -487,7 +502,6 @@
   (e/server
     (new AtomPre "server xx" xx))
   )
-
 
 (e/defn Entrypoint []
   (e/server

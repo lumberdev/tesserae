@@ -48,12 +48,12 @@
   (update-vals
     alias-sym->ns-sym-or-resolved-ns-map
     (fn [ns-sym-or-resolved-ns-map]
-       (if (symbol? ns-sym-or-resolved-ns-map)
-         (do
-           (require ns-sym-or-resolved-ns-map)
-           (-> (ns-publics ns-sym-or-resolved-ns-map)
-               (update-vals deref)))
-         ns-sym-or-resolved-ns-map))))
+      (if (symbol? ns-sym-or-resolved-ns-map)
+        (do
+          (require ns-sym-or-resolved-ns-map)
+          (-> (ns-publics ns-sym-or-resolved-ns-map)
+              (update-vals deref)))
+        ns-sym-or-resolved-ns-map))))
 
 (defn bindings [sym->qualified-sym-or-var]
   (update-vals
