@@ -5,7 +5,8 @@
             [stuffs.datalevin.util :as sdu]
             [stuffs.env :as env]
             [stuffs.util :as su]
-            [stuffs.mount :as smount]))
+            [stuffs.mount :as smount]
+            [datalevin.search-utils :as dsu]))
 
 (defn db-dir []
   (or (::dir (mount/args)) "data/tesserae/datalevin/db"))
@@ -37,11 +38,9 @@
      :schedule/next   {}}))
 
 (declare
-  entity datoms datoms->entities q where-entity where-entities transact!
+  entity datoms datoms->entities q where-entity where-entities transact! transact-entity!
   get-schema get-rschema update-schema
-
-  cell-by-name
-  cell-ret)
+  )
 
 (defstate ^{:on-reload :noop} conn
   :start (let [conn
@@ -61,6 +60,7 @@
               (d/transact! conn txs))
              ([txs tx-meta]
               (d/transact! conn txs tx-meta)))
+           (def transact-entity! (sdu/make-transact-entity-simple! conn))
            (defn get-schema [] (-> conn d/schema))
            (defn get-rschema [] (-> @conn sdu/rschema))
            (def update-schema (partial d/update-schema conn))
@@ -73,3 +73,4 @@
   (smount/with-restart ['conn]
     (su/delete-directory-recursive (db-dir)))
   )
+;(transact! [{:sheet/name "lumber internal"}])

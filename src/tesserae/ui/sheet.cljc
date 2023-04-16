@@ -8,10 +8,12 @@
     [stuffs.keybind :as keybind]
     [spyscope.core]
     [missionary.core :as m]
+    [tesserae.ui.globals :as g]
     [tesserae.eval.schedule :as eval.sched]
     [stuffs.env :as env]
     [tesserae.ui.render :as uir]
     [tesserae.ui.electric-util :as eu :include-macros true]
+    [kitchen-async.promise :as p]
     [net.cgrand.xforms :as x]
     [stuffs.js-interop :as j]
     [stuffs.util :as su]
@@ -19,7 +21,8 @@
     #?@(:clj  [[tesserae.db :as db]
                [stuffs.datalevin.util :as sdu]
                [tesserae.eval :as eval]]
-        :cljs [[stuffs.dom :as sdom]]))
+        :cljs [[stuffs.dom :as sdom]
+               ["vega-embed" :as vega-embed :refer [embed]]]))
   #?(:cljs (:require-macros [tesserae.ui.sheet]))
   (:import [hyperfiddle.electric Pending]))
 
@@ -55,8 +58,6 @@
          (m/reductions {} nil)
          new)))
 
-(e/def db)
-
 (def ROWS (vec (range 1 11)))
 (def COLS (vec (range 1 11)))
 (def COLS-COUNT (count COLS))
@@ -65,7 +66,7 @@
 (defn- coll->css-named-grid-cols [coll]
   (transduce (comp (map (su/wrap "[" "]"))
                    (map #(str % (if (= "[xHEADER]" %)
-                                  " auto "
+                                  " 1.5rem "
                                   " auto "
                                   #_" minmax(4rem auto) "))))
              str
@@ -117,14 +118,29 @@
 
 (def !editor-cell-pos (atom nil))
 
+#?(:cljs
+   (defn render-vega-embed [css-selector spec opts]
+     (let [vega-promise
+           (vega-embed/embed
+             css-selector
+             (j/assoc! spec
+                       "$schema" "https://vega.github.io/schema/vega-lite/v5.json",)
+             (clj->js opts))]
+       ;; teardown thunk (for m/observe)
+       #(.then vega-promise (fn [view] (.finalize view))))))
+
 (e/defn VegaLiteEmbed [json-spec]
   (e/client
     (let [css-id (str (gensym "vegalite"))]
       (dom/div (dom/props {:id css-id}))
-      (js/vegaEmbed (str "#" css-id)
-                    (j/assoc! (js/JSON.parse json-spec)
-                              "$schema" "https://vega.github.io/schema/vega-lite/v5.json",)
-                    (clj->js {:renderer "svg"}))
+      (new
+        (m/observe
+          (fn mount [!]
+            (! nil)
+            (render-vega-embed
+              (str "#" css-id)
+              (su/read-json json-spec)
+              {:renderer "svg"}))))
       nil)))
 
 (e/defn IncDecButtons [state cb]
@@ -474,7 +490,7 @@
               {:class ["sticky" "flex" "justify-center"
                        "align-center" "font-mono" "text-xs"
                        "bg-amber-300" "border-r-[1px]" "border-black"
-                       "z-20" "px-1"]
+                       "z-20" "px-1" :items-center]
                :style {:left              0
                        :grid-column-start (css-col "HEADER")
                        :grid-row-start    (css-row row)}})
@@ -503,12 +519,11 @@
     (new AtomPre "server xx" xx))
   )
 
-(e/defn Entrypoint []
+(e/defn Entrypoint [sheet-eid]
   (e/server
-    (binding [db (e/watch db/conn)]
-      (new Debug)
-      (new Sheet (sdu/entity db 1))
-      ))
+    (new Debug)
+    (new Sheet (sdu/entity g/db sheet-eid))
+    )
   )
 
 (comment

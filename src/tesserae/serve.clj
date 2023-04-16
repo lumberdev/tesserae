@@ -154,6 +154,10 @@
   (r.ring/router
     [["/"
       {#_#_:middleware [(wrap-auth-redirect-fn "/login")]
+       :get        (fn [req]
+                     (resp/redirect "/app"))}]
+     ["/app*"
+      {#_#_:middleware [(wrap-auth-redirect-fn "/login")]
        :get        index}]
      #_["/login"
       {:get
@@ -259,6 +263,7 @@
   (mount/stop #'server)
   (mount/start #'server)
   (mount/start #'db/conn #'server)
+  (mount/start-without #'tesserae.eval/eval-schedule-listener)
   (mount/running-states)
   )
 
