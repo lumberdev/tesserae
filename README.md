@@ -20,6 +20,10 @@ then visit http://localhost:3900
 
 ## Dev
 
+```
+npm install
+```
+
 Start a clojure repl with the :dev/cljs alias.
 Go to `tesserae.serve`, load the file. Shadow-cljs should start up.
 Run `(-main)` or `(mount/start)` to boot up the server, db, listeners etc.
