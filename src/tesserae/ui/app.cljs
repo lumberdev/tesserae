@@ -18,7 +18,7 @@
       ["" :home]
       ["/sheet/:id" {:name       :sheet
                      :parameters {:path {:id int?}}}]
-      #_["/panel/:id" {:name       :panel
+      ["/panel/:id" {:name       :panel
                      :parameters {:path {:id int?}}}]]]
     {:compile rc/compile-request-coercers
      :data    {:coercion rss/coercion}}))

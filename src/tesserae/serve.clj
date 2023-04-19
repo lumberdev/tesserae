@@ -228,7 +228,7 @@
       (println :starting-repl-with-port port)
       (clojure.core.server/start-server
         {:name          "socket-repl"
-         ;; :address is important for docker!
+         ;; :address is important for docker!E
          :address       "0.0.0.0"
          :port          port
          :accept        'clojure.core.server/repl

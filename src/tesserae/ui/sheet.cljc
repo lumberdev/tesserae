@@ -327,8 +327,9 @@
                                   (e/server
                                     ;(println :form-strr s ret)
                                     ;(reset! xx ev)
-                                    (when (db/transact! [(assoc cell-ent :cell/form-str s)])
-                                      (e/client (reset! !editor-cell-pos nil)))
+                                    (let [txr (db/transact! [(assoc cell-ent :cell/form-str s)])]
+                                      (when txr
+                                        (e/client (reset! !editor-cell-pos nil))))
                                     nil))))))
                   (dom/div
                     (dom/props {:class ["gap-1" "flex" "justify-between" :p-1 :h-6]
@@ -519,12 +520,10 @@
     (new AtomPre "server xx" xx))
   )
 
-(e/defn Entrypoint [sheet-eid]
+(e/defn Entrypoint [sheet-ent]
   (e/server
     (new Debug)
-    (new Sheet (sdu/entity g/db sheet-eid))
-    )
-  )
+    (new Sheet sheet-ent)))
 
 (comment
 

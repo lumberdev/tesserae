@@ -48,10 +48,10 @@
 
 
 #_(e/def <document-focused?
-  #?(:cljs
-     (<on js/window :focus (fn [e]
-                             (j/call js/document :hasFocus)
-                             ))))
+    #?(:cljs
+       (<on js/window :focus (fn [e]
+                               (j/call js/document :hasFocus)
+                               ))))
 
 #_(e/def clipboard+focus
     ; https://clojurians.slack.com/archives/CL85MBPEF/p1673467726964789
@@ -81,3 +81,14 @@
         (catch Pending e#
           (reset! ~atm true)
           (throw e#))))
+
+(defn async-watch [!x]
+  (m/sample deref
+            (m/reductions {} !x
+                          (m/ap (m/?> (m/relieve {}
+                                                 (m/observe
+                                                   (fn [!]
+                                                     (add-watch !x ! (fn [! _ _ _] (! nil)))
+                                                     #(remove-watch !x !)))))
+                                (m/? (m/via m/cpu !x))))))
+

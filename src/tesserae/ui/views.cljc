@@ -3,12 +3,15 @@
     [hyperfiddle.electric :as e]
     [hyperfiddle.electric-dom2 :as dom]
     [clojure.string :as str]
+    [missionary.core :as m]
     [stuffs.js-interop :as j]
     [spyscope.core]
     [stuffs.keybind :as keybind]
     [tesserae.ui.sheet :as sh :include-macros true]
+    [tesserae.ui.panel :as panel :include-macros true]
     [tesserae.ui.electric-util :as eu]
     [tesserae.ui.typeahead :refer [Typeahead] :include-macros true]
+    [tesserae.ui.popup :as popup :include-macros true]
     [tesserae.ui.globals :as g]
     [stuffs.route :as route]
     #?@(:clj [[datalevin.core :as d]
@@ -137,24 +140,55 @@
           (let [ent (db/entity eid)
                 nm  ((some-fn :sheet/name) ent)]
             (e/client
-              (dom/input
-                (dom/on "blur"
-                        (e/fn [e]
-                          (let [v (-> (j/get-in e [:target :value])
-                                      str/trim
-                                      not-empty)]
-                            (e/server
-                              #_(println :running eid)
-                              (db/transact! [(if v
-                                               ;[:db/add eid :sheet/name v]
-                                               ;[:db/retract eid :sheet/name]
-                                               (assoc ent :sheet/name v)
-                                               (dissoc ent :sheet/name))])
-                              nil)
-                            )))
-                (dom/props {:value       (or nm "")
-                            :class       [:outline-none :text-center]
-                            :placeholder "untitled"}))))))
+              (dom/div
+                (dom/props {:class [:flex :gap-2 :items-center]})
+                (dom/span
+                  (dom/on "blur"
+                          (e/fn [e]
+                            (let [v (-> (j/get-in e [:target :innerText])
+                                        str/trim
+                                        not-empty)]
+                              (println :doing v)
+                              (e/server
+                                #_(println :running eid)
+                                (db/transact! [(if v
+                                                 ;[:db/add eid :sheet/name v]
+                                                 ;[:db/retract eid :sheet/name]
+                                                 (assoc ent :sheet/name v)
+                                                 (dissoc ent :sheet/name))])
+                                nil)
+                              )))
+                  (dom/props {:role            "input"
+                              :contenteditable true
+                              :class           [:outline-none :text-center]
+                              :placeholder     "untitled"})
+                  (dom/text (or nm "")))
+                (new popup/Menu
+                     {:anchor (e/fn []
+                                (dom/div
+                                  (dom/props {:class [:cursor-pointer]
+                                              :style {:width        0
+                                                      :height       0
+                                                      :border-left  "5px solid transparent"
+                                                      :border-right "5px solid transparent"
+                                                      :border-top   "6px solid black"}
+
+                                              })))
+
+                      :items  [(let [oppo (case g/route
+                                            :panel :sheet
+                                            :sheet :panel)]
+                                 {:label    (str "show as " (name oppo))
+                                  :on-click (e/fn []
+                                              (route/push-state oppo {:id eid}))})
+                               {:label                   "delete"
+                                :label-after-first-click "are you sure?"
+                                :on-click                (e/fn []
+                                                           (e/server
+                                                             (db/transact! [[:db/retractEntity eid]]) nil)
+                                                           (e/client
+                                                             (route/push-state :home))
+                                                           )}]}))))))
       (e/server
         (new Typeahead
              {:placeholder                 "search or create"
@@ -164,8 +198,7 @@
                                              (e/server
                                                (let [{:keys [db/id]} (db/transact-entity! {:sheet/name input-value})]
                                                  (e/client (route/push-state :sheet {:id id})
-                                                           {:input-value ""})
-                                                 )))
+                                                           {:input-value ""}))))
               :on-pick                     (e/fn [{:keys [picked]}]
                                              (e/client
                                                (route/push-state :sheet {:id (e/server (:db/id picked))})
@@ -177,7 +210,7 @@
                                               :blur?       true})
               :suggestions-fn              (e/fn [q]
                                              (take 10 (search-or-recent->ents [:sheet/name] q)))
-              :container-class             "relative z-30 w-80"
+              :container-class             "relative z-[10000] w-80"
               :input-class                 [:outline-none :w-full :text-right "focus:text-left"]
               :suggestions-container-style {:border "1px solid black"}
               :suggestions-container-class [:flex :flex-col :gap-1 :py-1 :absolute :bg-white :mt-1 :w-full]
@@ -190,8 +223,14 @@
       (dom/props {:style {:height "calc(100vh - 30px)"}})
       (case g/route
         :home (new Recents)
-        :sheet (let [sheet-id (-> g/route-match :parameters :path :id)]
-                 (new sh/Entrypoint sheet-id))
+        (:sheet :panel) (let [id (-> g/route-match :parameters :path :id)]
+                          (e/server
+                            (let [<ent (sdu/entity g/db id)]
+                              (e/client
+                                (case g/route
+                                  :sheet (e/server (new sh/Entrypoint <ent))
+                                  :panel (e/server (new panel/Entrypoint <ent)))))))
+
         (dom/div
           (dom/props {:class [:text-2xl]})
           (dom/text "not found")
@@ -203,6 +242,6 @@
     (dom/div
       (dom/props {:class [:flex :flex-col :w-100vw :h-100vh :overflow-hidden]})
       (e/server
-        (binding [g/db (e/watch db/conn)]
+        (binding [g/db (new (eu/async-watch db/conn))]
           (new Nav)
           (new Route))))))
