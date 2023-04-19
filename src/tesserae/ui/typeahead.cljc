@@ -36,9 +36,9 @@
                   (dom/props {:class [:relative]})
                   (when (and (not-empty input) show-suggestions? (= idx suggestions-count))
                     (dom/div
-                      (dom/props {:class [#_"text-xs" :text-slate-400 :absolute :right-full :mr-2]})
+                      (dom/props {:class ["text-xs" :text-slate-400 :absolute :right-full :mr-2 :bottom-1 :whitespace-pre]})
                       (dom/span (dom/props {:class [:italic]})
-                                (dom/text (str "create")))))
+                                (dom/text (str "⏎ to create")))))
                   (dom/input
                     (dom/props {:class       input-class
                                 :style       input-style
@@ -62,18 +62,18 @@
                               (keybind/chord-case e
                                 ("enter" "tab") (do
                                                   (.preventDefault e)
-                                                  (e/server
-                                                    (let [picked    (nth @!suggestions idx nil)
-                                                          input-val (e/client @!input)]
-                                                      (some->
-                                                        (if picked
-                                                          (on-pick. {:picked         picked
-                                                                     :input-value    input-val
-                                                                     :handle-updates handle-updates})
-                                                          (on-create. {:input-value    input-val
-                                                                       :handle-updates handle-updates}))
-                                                        (handle-updates.))
-                                                      nil)))
+                                                  (let [input-val @!input]
+                                                    (e/server
+                                                      (let [picked (nth @!suggestions idx nil)]
+                                                        (some->
+                                                          (if picked
+                                                            (on-pick. {:picked         picked
+                                                                       :input-value    input-val
+                                                                       :handle-updates handle-updates})
+                                                            (on-create. {:input-value    input-val
+                                                                         :handle-updates handle-updates}))
+                                                          (handle-updates.))
+                                                        nil))))
                                 ("up") (swap! !idx dec)
                                 ("down") (swap! !idx inc)
                                 ("esc") (do
@@ -112,15 +112,15 @@
 
 
 (comment
- (e/defn TypeaheadDebug []
-   (e/server
-     (new Typeahead
-          {:placeholder    "search or create"
-           :autofocus?     true
-           :template-fn    (e/fn [x] (:foo x))
-           :on-create      (e/fn [_])
-           :on-pick        (e/fn [_])
-           :on-blur        (e/fn [_])
-           :on-esc         (e/fn [_])
-           :suggestions-fn (e/fn [q]
-                             (get-suggestions q))}))))
+  (e/defn TypeaheadDebug []
+    (e/server
+      (new Typeahead
+           {:placeholder    "search or create"
+            :autofocus?     true
+            :template-fn    (e/fn [x] (:foo x))
+            :on-create      (e/fn [_])
+            :on-pick        (e/fn [_])
+            :on-blur        (e/fn [_])
+            :on-esc         (e/fn [_])
+            :suggestions-fn (e/fn [q]
+                              (get-suggestions q))}))))
