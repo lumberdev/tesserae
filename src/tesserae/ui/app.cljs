@@ -2,7 +2,6 @@
   (:require [hyperfiddle.electric :as p]
             [hyperfiddle.electric-dom2 :as dom]
             [tesserae.ui.globals :as g]
-            [tesserae.ui.globals :as g]
             [tesserae.ui.views :as views :include-macros true]
             [missionary.core :as m]
             [stuffs.js-interop :as j]
