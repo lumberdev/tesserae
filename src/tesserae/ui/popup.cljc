@@ -11,7 +11,7 @@
   (let [[!open? open?] (eu/state false)]
     (dom/div
       (dom/props {:class ["z-[10000]" "text-xs" "relative" :cursor-pointer]})
-      (dom/span
+      (dom/div
         (dom/props
           {:class [:tracking-tighter :p-1]})
         (dom/on "click" (e/fn [_]

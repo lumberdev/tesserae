@@ -124,16 +124,19 @@
                           :w-full
                           :py-0.5
                           :h-8
-                          :px-1]})
+                          :px-1
+                          :group]})
       (dom/div
-        (dom/props {:class [:w-80]})
+        (dom/props {:class [:sm:w-80 :w-16]})
         (dom/a
           (dom/props {:href  "/app"
                       :class [:gap-2 :flex :items-center]})
           (dom/div
             (dom/props {:class [:rounded-full :h-5 :w-5]
                         :style {:background "#FFCC08"}}))
-          (dom/text "Tesserae")))
+          (dom/span
+            (dom/props {:class ["hidden" "md:inline"]})
+            (dom/text "Tesserae"))))
       ;; ent
       (when-let [eid (-> g/route-match :parameters :path :id)]
         (e/server
@@ -141,7 +144,10 @@
                 nm  ((some-fn :sheet/name) ent)]
             (e/client
               (dom/div
-                (dom/props {:class [:flex :gap-2 :items-center]})
+                (dom/props {:class [:items-center
+                                    "group-focus-within:hidden"
+                                    "group-focus-within:sm:flex"
+                                    "flex"]})
                 (dom/span
                   (dom/on "blur"
                           (e/fn [e]
@@ -160,13 +166,13 @@
                               )))
                   (dom/props {:role            "input"
                               :contenteditable true
-                              :class           [:outline-none :text-center]
+                              :class           [:outline-none :text-center :whitespace-nowrap]
                               :placeholder     "untitled"})
                   (dom/text (or nm "")))
                 (new popup/Menu
                      {:anchor (e/fn []
                                 (dom/div
-                                  (dom/props {:class [:cursor-pointer]
+                                  (dom/props {:class [:cursor-pointer :m-1]
                                               :style {:width        0
                                                       :height       0
                                                       :border-left  "5px solid transparent"
@@ -210,8 +216,8 @@
                                               :blur?       true})
               :suggestions-fn              (e/fn [q]
                                              (take 10 (search-or-recent->ents [:sheet/name] q)))
-              :container-class             "relative z-[10000] w-80"
-              :input-class                 [:outline-none :w-full :text-right "focus:text-left"]
+              :container-class             "relative z-[10000] sm:w-80 w-16 group-focus-within:w-80"
+              :input-class                 [:outline-none :w-full :text-right "focus:text-left" :truncate]
               :suggestions-container-style {:border "1px solid black"}
               :suggestions-container-class [:flex :flex-col :gap-1 :py-1 :absolute :bg-white :mt-1 :w-full]
               :suggestion-class            "px-1 hover:bg-slate-200"
