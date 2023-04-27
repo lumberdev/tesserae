@@ -145,7 +145,9 @@
 
 (e/defn IncDecButtons [state cb]
   (dom/div
+    (dom/props {:class ["flex" "border" "border-black" :rounded-sm :m-2]})
     (dom/button
+      (dom/props {:class ["font-bold" "px-1"]})
       (dom/on "click" (e/fn [_]
                         (new cb (dec state))))
       (dom/on "dblclick"
@@ -153,6 +155,7 @@
       (dom/text "-"))
     (dom/text " " state " ")
     (dom/button
+      (dom/props {:class ["font-bold" "px-1"]})
       (dom/on "click" (e/fn [_] (new cb (inc state))))
       (dom/on "dblclick"
               (e/fn [e] (.stopPropagation e)))

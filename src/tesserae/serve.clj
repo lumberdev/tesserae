@@ -3,7 +3,7 @@
     [datalevin.core :as d]
     [mount.core :as mount :refer [defstate]]
     [ring.adapter.jetty9 :as ring.jetty9]
-    [tesserae.ui.sheet]
+    [tesserae.ui.views]
     [reitit.ring :as r.ring]
     [ring.util.response :as resp]
     [stuffs.util :as su]

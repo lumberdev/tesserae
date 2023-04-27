@@ -396,6 +396,7 @@
                                 (let [cell (m/?> ##Inf >cells)]
                                   (transact-cell! (assoc cell :cell/ret-pending? true))
                                   (try
+                                    #_(println :db/id (:db/id cell))
                                     (m/?
                                       (eval-cell-task {:cell    cell
                                                        :eval-fn eval-cell}))
@@ -455,6 +456,7 @@
                task           (m/reduce
                                 (fn [out v]
                                   (println ::form-str-listener-evaled (:db/id v))
+                                  #_(def ret v)
                                   (transact-cell! v)
                                   )
                                 []
@@ -482,14 +484,19 @@
   (mount/start #'tesserae.serve/server)
   (db/transact! [])
   (mount/start #'db/conn)
+  (mount/stop #'db/conn)
   (mount/start)
   (mount/stop)
   (mount/start #'db-eval-form-str-listener)
   (mount/start #'db-eval-refs-listener)
+  (mount/start #'eval-schedule-listener)
+  (mount/stop #'eval-schedule-listener)
   (mount/running-states)
   ;(mount/start #'db/conn)
   ;(mount/running-states)
+  (mount/start-without #'eval-schedule-listener)
   (mount/stop #'db-eval-form-str-listener #'db-eval-refs-listener)
+  (mount/stop #'eval-schedule-listener #'db-eval-refs-listener)
   (mount/stop #'db-eval-form-str-listener #'db-eval-refs-listener
               #'eval-schedule-listener)
   #_(db/transact! [[:db/retract 6 :cell/refs]
@@ -522,5 +529,3 @@
              [:db/add e :cell/form-str (str/replace v match replacement)])))
     (db/datoms :ave :cell/form-str))
   )
-
-
