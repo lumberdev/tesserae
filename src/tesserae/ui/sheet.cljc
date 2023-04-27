@@ -13,6 +13,8 @@
     [stuffs.env :as env]
     [tesserae.ui.render :as uir]
     [tesserae.ui.electric-util :as eu :include-macros true]
+    [tesserae.ui.vega :as ui.vega :include-macros true]
+    [tesserae.ui.popup :as popup :include-macros true]
     [kitchen-async.promise :as p]
     [net.cgrand.xforms :as x]
     [stuffs.js-interop :as j]
@@ -21,29 +23,9 @@
     #?@(:clj  [[tesserae.db :as db]
                [stuffs.datalevin.util :as sdu]
                [tesserae.eval :as eval]]
-        :cljs [[stuffs.dom :as sdom]
-               ["vega-embed" :as vega-embed :refer [embed]]]))
+        :cljs [[stuffs.dom :as sdom]]))
   #?(:cljs (:require-macros [tesserae.ui.sheet]))
   (:import [hyperfiddle.electric Pending]))
-
-(defonce xx (atom nil))
-(defn setxx [x] (reset! xx x))
-
-(defonce dbg-html (atom nil))
-(defn sethtml [x] (reset! dbg-html x) :done)
-(defonce dbg-vl (atom nil))
-(defn setvl [x] (reset! dbg-vl (some-> x su/write-json-string)) :done)
-
-(e/defn AtomPre [label a]
-  (let [v  (e/watch a)
-        pv (su/pretty-string v)]
-    (when v
-      (e/client
-        (dom/div
-          (dom/props {:style {:display :flex
-                              :gap     :5px}})
-          (dom/div (dom/text label))
-          (dom/pre (dom/props {:style {:margin 0}}) (dom/text pv)))))))
 
 (e/def active-element
   ;#?(:cljs)
@@ -118,30 +100,6 @@
 
 (def !editor-cell-pos (atom nil))
 
-#?(:cljs
-   (defn render-vega-embed [css-selector spec opts]
-     (let [vega-promise
-           (vega-embed/embed
-             css-selector
-             (j/assoc! spec
-                       "$schema" "https://vega.github.io/schema/vega-lite/v5.json",)
-             (clj->js opts))]
-       ;; teardown thunk (for m/observe)
-       #(.then vega-promise (fn [view] (.finalize view))))))
-
-(e/defn VegaLiteEmbed [json-spec]
-  (e/client
-    (let [css-id (str (gensym "vegalite"))]
-      (dom/div (dom/props {:id css-id}))
-      (new
-        (m/observe
-          (fn mount [!]
-            (! nil)
-            (render-vega-embed
-              (str "#" css-id)
-              (su/read-json json-spec)
-              {:renderer "svg"}))))
-      nil)))
 
 (e/defn IncDecButtons [state cb]
   (dom/div
@@ -180,7 +138,7 @@
             ret
             (cond
               (or (number? ret) (string? ret)) (e/client (dom/text (str ret)))
-              (= :vegalite (uir/content-type ret)) (new VegaLiteEmbed (uir/value ret))
+              (= :vegalite (uir/content-type ret)) (new ui.vega/VegaLiteEmbed (uir/value ret))
               (= :ui/button (uir/content-type ret)) (e/client
                                                       (let [state (uir/value ret)]
                                                         (dom/div
@@ -207,7 +165,6 @@
                                                          (new IncDecButtons
                                                               state
                                                               (e/fn [nv]
-                                                                #_(setxx nv)
                                                                 (e/server
                                                                   (let [v (assoc ret ::uir/val nv)]
                                                                     (db/transact! [{:db/id         id
@@ -237,32 +194,6 @@
                     :d         "M263 0.5C118.12 0.5 0.5 118.12 0.5 263C0.5 407.88 118.12 525.5 263 525.5C407.88 525.5 525.5 407.88 525.5 263C525.5 118.12 407.88 0.5 263 0.5ZM263 35.5C388.56 35.5 490.5 137.44 490.5 263C490.5 388.56 388.56 490.5 263 490.5C137.44 490.5 35.5 388.56 35.5 263C35.5 137.44 137.44 35.5 263 35.5ZM245.5 123V263C245.5 268.059 247.688 272.871 251.52 276.195L347.77 359.949C355.051 366.285 366.109 365.515 372.445 358.234C378.797 350.953 378.028 339.894 370.731 333.543L280.501 255.039V122.999C280.501 113.339 272.661 105.499 263.001 105.499C253.341 105.499 245.501 113.339 245.501 122.999L245.5 123Z",
                     }))
       )))
-
-(e/defn PopupMenu [{:keys [items]}]
-  (let [[!open? open?] (eu/state false)]
-    (dom/div
-      (dom/props {:class ["font-mono" "text-xs" "relative" :cursor-pointer]})
-      (dom/span
-        (dom/props
-          {:class [:tracking-tighter :p-1]})
-        (dom/on "click" (e/fn [_]
-                          (swap! !open? not)))
-        (dom/text "..."))
-      (when open?
-        (dom/div
-          (dom/props {:class ["absolute" "z-30" :p-1 :bg-white :flex :flex-col :gap-1
-                              :border :border-black :whitespace-pre]})
-          (e/for [{:as x :keys [override label on-click]} items]
-            (when x
-              (if override
-                (new override)
-                (dom/div
-                  (dom/props {:class [:p-1 "hover:bg-slate-200"]})
-                  (dom/on "click" (e/fn [e]
-                                    (let [ret (new on-click e)]
-                                      (when (boolean? ret)
-                                        (reset! !open? ret)))))
-                  (dom/text label))))))))))
 
 (e/defn EditableCell
   [{:as         <cell-ent
@@ -329,7 +260,6 @@
                                             str/trim)]
                                   (e/server
                                     ;(println :form-strr s ret)
-                                    ;(reset! xx ev)
                                     (let [txr (db/transact! [(assoc cell-ent :cell/form-str s)])]
                                       (when txr
                                         (e/client (reset! !editor-cell-pos nil))))
@@ -432,21 +362,29 @@
                                 (dom/on "click" (e/fn [_] (reset! !edit-schedule? true)))
                                 (new ClockSym)
                                 ))
-                            (new PopupMenu
-                                 {:items [(when id
-                                            {:override
-                                             (e/fn []
-                                               (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
-                                                        (dom/text "id " id)))})
-                                          {:label    "run"
-                                           :on-click (e/fn [_]
-                                                       (e/server
-                                                         (new eval-tx-cell! cell-ent)
-                                                         false))}
-                                          {:label    "add schedule"
-                                           :on-click (e/fn [_]
-                                                       (reset! !edit-schedule? true)
-                                                       false)}]})))))))))))))))
+                            (when id
+                              (new popup/Menu
+                                   {:anchor (e/fn [] (new popup/TriangleAnchor {}))
+                                    :items  [{:override
+                                              (e/fn []
+                                                (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
+                                                         (dom/text "id " id)))}
+                                             {:label    "run"
+                                              :on-click (e/fn [_]
+                                                          (e/server
+                                                            (new eval-tx-cell! cell-ent)
+                                                            false))}
+                                             {:label    "add schedule"
+                                              :on-click (e/fn [_]
+                                                          (reset! !edit-schedule? true)
+                                                          false)}
+                                             {:label                   "delete"
+                                              :label-after-first-click "are you sure?"
+                                              :on-click                (e/fn [_]
+                                                                         (e/server
+                                                                           (db/transact! [[:db/retractEntity id]])
+                                                                           nil)
+                                                                         false)}]}))))))))))))))))
 
 (e/defn Sheet [{:as x :keys [sheet/cells db/id]}]
   (let [pos->cell (into {} (map (juxt :cell/pos identity)) cells)]
@@ -508,24 +446,10 @@
                      (pos->cell pos)
                      {:cell/pos pos :cell/x x :cell/y y :sheet/_cells {:db/id id}})))))))))
 
-(e/defn Debug []
-  (when-let [vega-json-spec (e/watch dbg-vl)]
-    (new VegaLiteEmbed vega-json-spec))
-  (when-let [html (e/watch dbg-html)]
-    (e/client
-      (dom/div
-        (j/assoc!
-          dom/node
-          :innerHTML html))))
-  (e/client
-    (new AtomPre "client xx" xx))
-  (e/server
-    (new AtomPre "server xx" xx))
-  )
+
 
 (e/defn Entrypoint [sheet-ent]
   (e/server
-    (new Debug)
     (new Sheet sheet-ent)))
 
 (comment

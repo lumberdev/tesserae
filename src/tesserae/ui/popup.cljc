@@ -5,6 +5,17 @@
             [missionary.core :as m]
             [tesserae.ui.electric-util :as eu]))
 
+(e/defn TriangleAnchor [{:keys [css-class css-style]
+                         :or   {css-style {}}}]
+  (dom/div
+    (dom/props {:class [:cursor-pointer css-class]
+                :style (merge
+                         {:width        0
+                          :height       0
+                          :border-left  "5px solid transparent"
+                          :border-right "5px solid transparent"
+                          :border-top   "6px solid black"}
+                         css-style)})))
 
 (e/defn Menu [{:keys [anchor items]
                :or   {anchor "..."}}]

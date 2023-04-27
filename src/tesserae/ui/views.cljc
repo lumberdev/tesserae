@@ -13,7 +13,9 @@
     [tesserae.ui.typeahead :refer [Typeahead] :include-macros true]
     [tesserae.ui.popup :as popup :include-macros true]
     [tesserae.ui.globals :as g]
+    [tesserae.ui.vega :as ui.vega]
     [stuffs.route :as route]
+    [stuffs.util :as su]
     #?@(:clj [[datalevin.core :as d]
               [stuffs.datalevin.util :as sdu]
               [tesserae.db :as db]]))
@@ -170,17 +172,7 @@
                               :placeholder     "untitled"})
                   (dom/text (or nm "")))
                 (new popup/Menu
-                     {:anchor (e/fn []
-                                (dom/div
-                                  (dom/props {:class [:cursor-pointer :m-1]
-                                              :style {:width        0
-                                                      :height       0
-                                                      :border-left  "5px solid transparent"
-                                                      :border-right "5px solid transparent"
-                                                      :border-top   "6px solid black"}
-
-                                              })))
-
+                     {:anchor (e/fn [] (new popup/TriangleAnchor {:css-class "m-1"}))
                       :items  [(let [oppo (case g/route
                                             :panel :sheet
                                             :sheet :panel)]
@@ -242,8 +234,44 @@
           (dom/text "not found")
           )))))
 
+;; *** debugging views
+
+(defonce xx (atom nil))
+(defn setxx [x] (reset! xx x))
+
+(defonce dbg-html (atom nil))
+(defn sethtml [x] (reset! dbg-html x) :done)
+(defonce dbg-vl (atom nil))
+(defn setvl [x] (reset! dbg-vl (some-> x su/write-json-string)) :done)
+
+(e/defn AtomPre [label a]
+  (let [v  (e/watch a)
+        pv (su/pretty-string v)]
+    (when v
+      (e/client
+        (dom/div
+          (dom/props {:style {:display :flex
+                              :gap     :5px}})
+          (dom/div (dom/text label))
+          (dom/pre (dom/props {:style {:margin 0}}) (dom/text pv)))))))
+
+(e/defn Debug []
+  (when-let [vega-json-spec (e/watch dbg-vl)]
+    (new ui.vega/VegaLiteEmbed vega-json-spec))
+  (when-let [html (e/watch dbg-html)]
+    (e/client
+      (dom/div
+        (j/assoc!
+          dom/node
+          :innerHTML html))))
+  (e/client
+    (new AtomPre "client xx" xx))
+  (e/server
+    (new AtomPre "server xx" xx)))
 
 (e/defn App []
+  (e/server
+    (new Debug))
   (e/client
     (dom/div
       (dom/props {:class [:flex :flex-col :w-100vw :h-100vh :overflow-hidden]})
