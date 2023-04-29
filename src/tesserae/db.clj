@@ -20,6 +20,8 @@
      :sheet/cells     {:db/valueType   :db.type/ref
                        :db/cardinality :db.cardinality/many
                        :db/isComponent true}
+     :sheet/size      {:db/valueType  :db.type/tuple
+                       :db/tupleAttrs [:sheet/cols-count :sheet/rows-count]}
 
      :cell/name       {:db/valueType :db.type/string}
      :cell/form-str   {:db/valueType :db.type/string}
@@ -73,4 +75,3 @@
   (smount/with-restart ['conn]
     (su/delete-directory-recursive (db-dir)))
   )
-;(transact! [{:sheet/name "lumber internal"}])

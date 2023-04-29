@@ -40,11 +40,6 @@
          (m/reductions {} nil)
          new)))
 
-(def ROWS (vec (range 1 11)))
-(def COLS (vec (range 1 11)))
-(def COLS-COUNT (count COLS))
-(def ROWS-COUNT (count ROWS))
-
 (defn- coll->css-named-grid-cols [coll]
   (transduce (comp (map (su/wrap "[" "]"))
                    (map #(str % (if (= "[xHEADER]" %)
@@ -65,15 +60,15 @@
 (defn css-col [c] (str "x" c))
 (defn css-row [r] (str "y" r))
 
-(def css-grid-columns
+(defn css-grid-columns [cols-count]
   (coll->css-named-grid-cols
     (map css-col
-         (cons "HEADER" COLS))))
+         (cons "HEADER" (range 1 (inc cols-count))))))
 
-(def css-grid-rows
+(defn css-grid-rows [rows-count]
   (coll->css-named-grid-rows
     (map css-row
-         (cons "HEADER" ROWS))))
+         (cons "HEADER" (range 1 (inc rows-count))))))
 
 (def !active-cell-pos (atom nil))
 
@@ -87,16 +82,17 @@
             #(println ::eval-tx-cell!-fail %)))
     nil))
 
-(defn arrow-pos! [dir]
-  (when-let [[x y] @!active-cell-pos]
-    (letfn [(cyc [v max] (if (zero? v) max v))
-            (modc [cv op max] (cyc (mod (op cv) max) max))]
-      (reset! !active-cell-pos
-              (case dir
-                :right [(modc x inc COLS-COUNT) y]
-                :left [(modc x dec COLS-COUNT) y]
-                :up [x (modc y dec ROWS-COUNT)]
-                :down [x (modc y inc ROWS-COUNT)])))))
+(defn arrow-pos-fn! [cols-count rows-count]
+  (fn arrow-pos! [dir]
+    (when-let [[x y] @!active-cell-pos]
+      (letfn [(cyc [v max] (if (zero? v) max v))
+              (modc [cv op max] (cyc (mod (op cv) max) max))]
+        (reset! !active-cell-pos
+                (case dir
+                  :right [(modc x inc cols-count) y]
+                  :left [(modc x dec cols-count) y]
+                  :up [x (modc y dec rows-count)]
+                  :down [x (modc y inc rows-count)]))))))
 
 (def !editor-cell-pos (atom nil))
 
@@ -199,7 +195,7 @@
   [{:as         <cell-ent
     :keys       [db/id]
     :cell/keys  [form-str pos x y ret-pending? schedule]
-    :sheet/keys [_cells]
+    :sheet/keys [_cells cols-count]
     cname       :cell/name}]
   (e/server
     (let [cell-ent  (or (db/entity id) <cell-ent)
@@ -231,7 +227,7 @@
                             :border            (when active? "2px solid blue")
                             :margin            (when active? "-2px")}
                  :tabindex (int
-                             (+ (Math/pow (+ COLS-COUNT y) 2)
+                             (+ (Math/pow (+ cols-count y) 2)
                                 x))})
               (e/server
                 (new CellRet <cell-ent)
@@ -386,65 +382,71 @@
                                                                            nil)
                                                                          false)}]}))))))))))))))))
 
-(e/defn Sheet [{:as x :keys [sheet/cells db/id]}]
+(e/defn Sheet [{:as         x
+                :keys       [db/id]
+                :sheet/keys [cells cols-count rows-count]}]
   (let [pos->cell (into {} (map (juxt :cell/pos identity)) cells)]
     (e/client
-      (dom/div
-        (dom/on "keydown"
-                (e/fn [e]
-                  (keybind/chord-case e
-                    "right" (do
-                              (.preventDefault e)
-                              (arrow-pos! :right))
-                    "left" (do
-                             (.preventDefault e)
-                             (arrow-pos! :left))
-                    "up" (do
-                           (.preventDefault e)
-                           (arrow-pos! :up))
-                    "down" (do
-                             (.preventDefault e)
-                             (arrow-pos! :down)))))
-        (dom/props
-          {:class ["w-full" "h-full" "inline-grid" "bg-amber-300" :overflow-auto]
-           :style {:overscroll-behavior-x :none
-                   :gap                   :1px
-                   :grid-template-columns css-grid-columns
-                   :grid-template-rows    css-grid-rows}})
+      (let [arrow-pos! (arrow-pos-fn! cols-count rows-count)
+            cols       (range 1 (inc cols-count))
+            rows       (range 1 (inc rows-count))]
         (dom/div
-          (dom/props {:style {:grid-column-start (css-col "HEADER")
-                              :grid-row-start    (css-row "HEADER")}}))
-        (e/for [col COLS]
-          (dom/div
-            (dom/props
-              {:class ["sticky" "flex" "justify-center"
-                       "align-center" "font-mono" "text-xs"
-                       "bg-amber-300" "border-b-[1px]" "border-black"
-                       "z-20" :py-1]
-               :style {:top               0
-                       :grid-column-start (css-col col)
-                       :grid-row-start    (css-row "HEADER")}})
-            (dom/text col)
-            ))
-        (e/for [row ROWS]
-          (dom/div
-            (dom/props
-              {:class ["sticky" "flex" "justify-center"
-                       "align-center" "font-mono" "text-xs"
-                       "bg-amber-300" "border-r-[1px]" "border-black"
-                       "z-20" "px-1" :items-center]
-               :style {:left              0
-                       :grid-column-start (css-col "HEADER")
-                       :grid-row-start    (css-row row)}})
-            (dom/text row)))
+          (dom/on "keydown"
+                  (e/fn [e]
+                    (keybind/chord-case e
+                      "right" (do
+                                (.preventDefault e)
+                                (arrow-pos! :right))
+                      "left" (do
+                               (.preventDefault e)
+                               (arrow-pos! :left))
+                      "up" (do
+                             (.preventDefault e)
+                             (arrow-pos! :up))
+                      "down" (do
+                               (.preventDefault e)
+                               (arrow-pos! :down)))))
+          (dom/props
+            {:class ["w-full" "h-full" "inline-grid" "bg-amber-300" :overflow-auto]
+             :style {:overscroll-behavior-x :none
+                     :gap                   :1px
+                     :grid-template-columns (css-grid-columns cols-count)
+                     :grid-template-rows    (css-grid-rows rows-count)}})
 
-        (e/server
-          (e/for [x COLS y ROWS]
-            (let [pos [x y]]
-              (new EditableCell
-                   (or
-                     (pos->cell pos)
-                     {:cell/pos pos :cell/x x :cell/y y :sheet/_cells {:db/id id}})))))))))
+          (dom/div
+            (dom/props {:style {:grid-column-start (css-col "HEADER")
+                                :grid-row-start    (css-row "HEADER")}}))
+          (e/for [col cols]
+            (dom/div
+              (dom/props
+                {:class ["sticky" "flex" "justify-center"
+                         "align-center" "font-mono" "text-xs"
+                         "bg-amber-300" "border-b-[1px]" "border-black"
+                         "z-20" :py-1]
+                 :style {:top               0
+                         :grid-column-start (css-col col)
+                         :grid-row-start    (css-row "HEADER")}})
+              (dom/text col)
+              ))
+          (e/for [row rows]
+            (dom/div
+              (dom/props
+                {:class ["sticky" "flex" "justify-center"
+                         "align-center" "font-mono" "text-xs"
+                         "bg-amber-300" "border-r-[1px]" "border-black"
+                         "z-20" "px-1" :items-center]
+                 :style {:left              0
+                         :grid-column-start (css-col "HEADER")
+                         :grid-row-start    (css-row row)}})
+              (dom/text row)))
+
+          (e/server
+            (e/for [x (range 1 (inc cols-count)) y (range 1 (inc rows-count))]
+              (let [pos [x y]]
+                (new EditableCell
+                     (or
+                       (pos->cell pos)
+                       {:cell/pos pos :cell/x x :cell/y y :sheet/_cells {:db/id id}}))))))))))
 
 
 

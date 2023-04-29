@@ -242,7 +242,10 @@
 (defonce dbg-html (atom nil))
 (defn sethtml [x] (reset! dbg-html x) :done)
 (defonce dbg-vl (atom nil))
-(defn setvl [x] (reset! dbg-vl (some-> x su/write-json-string)) :done)
+(defn setvl
+  ([] (setvl nil))
+  ([x]
+   (reset! dbg-vl (some-> x su/write-json-string)) :done))
 
 (e/defn AtomPre [label a]
   (let [v  (e/watch a)
