@@ -194,7 +194,10 @@
                                              ((some-fn :sheet/name :panel/name) ent))
               :on-create                   (e/fn [{:keys [input-value]}]
                                              (e/server
-                                               (let [{:keys [db/id]} (db/transact-entity! {:sheet/name input-value})]
+                                               (let [{:keys [db/id]} (db/transact-entity!
+                                                                       {:sheet/name       input-value
+                                                                        :sheet/cols-count 10
+                                                                        :sheet/rows-count 10})]
                                                  (e/client (route/push-state :sheet {:id id})
                                                            {:input-value ""}))))
               :on-pick                     (e/fn [{:keys [picked]}]
