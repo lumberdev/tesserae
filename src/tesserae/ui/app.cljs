@@ -31,9 +31,6 @@
 (p/def re-router
   (->> (m/observe
          (fn [!]
-           (println :RUNNING)
-           (js/console.log "LOO" (j/get js/window :location))
-           #_(j/assoc-in! js/window [:location :hash] "lalala")
            (rfe/start!
              router
              !
