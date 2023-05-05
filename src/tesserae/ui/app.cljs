@@ -1,5 +1,6 @@
 (ns tesserae.ui.app
-  (:require [hyperfiddle.electric :as p]
+  (:require [clojure.string :as str]
+            [hyperfiddle.electric :as p]
             [hyperfiddle.electric-dom2 :as dom]
             [tesserae.ui.globals :as g]
             [tesserae.ui.views :as views :include-macros true]
@@ -30,6 +31,9 @@
 (p/def re-router
   (->> (m/observe
          (fn [!]
+           (println :RUNNING)
+           (js/console.log "LOO" (j/get js/window :location))
+           #_(j/assoc-in! js/window [:location :hash] "lalala")
            (rfe/start!
              router
              !
@@ -48,7 +52,21 @@
 
 (defonce reactor nil)
 
+(defn mystery-hash-reload-hack
+  "This only happens on Safari.
+  A hash appears in the url after a few auth redirects.
+  This removes it and reloads the page..."
+  []
+  (when (str/includes?
+          (j/get-in js/window [:location :href]) "#")
+    (j/call-in js/window
+               [:history :pushState]
+               "" ""
+               (.-pathname js/location))
+    (j/call-in js/window [:location :reload])))
+
 (defn ^:dev/after-load ^:export start []
+  (mystery-hash-reload-hack)
   (assert (nil? reactor) "reactor already running")
   (set! reactor (electric-main
                   #(js/console.log "Reactor success:" %)
