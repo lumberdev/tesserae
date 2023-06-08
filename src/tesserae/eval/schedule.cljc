@@ -160,8 +160,7 @@
 
 (defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
   (if (or (nil? repeat) (and next (t/> next (t/date-time))))
-    ;; FIXME associng existing value to force db listener loop
-    (assoc sched :schedule/next next)
+    sched
     (let [nex-t (su/ffilter
                   #(t/> % (t/date-time))
                   (iterate #(t/>> % (second repeat)) (or next from)))]

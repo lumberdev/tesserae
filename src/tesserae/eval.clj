@@ -333,12 +333,14 @@
                                {cell :cell/_schedule snext :schedule/next :as sched} (m/?< >scheds)
                                wait (t/millis (t/between (t/date-time) snext))
                                ]
+
                            (try
-                             ;(println :sleep wait)
+                             #_(println :sleep wait cell-id (:db/id sched) (:db/updated-at sched))
                              (m/? (m/sleep wait))
                              ;(println :done-sleep)
                              (transact-cell! (assoc cell :cell/ret-pending? true))
-                             [sched
+
+                             [(eval.sched/add-next-time sched)
                               (m/?
                                 (eval-cell-task {:cell    cell
                                                  :eval-fn eval-cell}))]
@@ -352,7 +354,9 @@
                          (fn [out sched+cell]
                            ;(def s (first sched+cell))
                            ;(println :Fi (first sched+cell))
-                           #_(println ::sched-evaled (:db/id (second sched+cell)))
+                           #_(let [[sched cell] sched+cell]
+                               (println ::sched-evaled #_(:db/id (second sched+cell))
+                                        (:db/id sched) (:db/updated-at sched)))
                            (d/transact! db/conn sched+cell {:transacted-by ::schedule-listener})
                            )
                          []
@@ -401,7 +405,7 @@
                                       (eval-cell-task {:cell    cell
                                                        :eval-fn eval-cell}))
                                     (catch missionary.Cancelled c
-                                      (println ::cancelled-eval-cell (:db/id cell))
+                                      (println ::refs-listener-cancelled-eval-cell (:db/id cell))
                                       (m/amb))
                                     )))
                task           (m/reduce
@@ -450,7 +454,7 @@
                                       (eval-cell-task {:cell    cell
                                                        :eval-fn fmt-eval-cell}))
                                     (catch missionary.Cancelled c
-                                      (println ::cancelled-eval-cell id)
+                                      (println ::form-str-listener-cancelled-eval-cell id)
                                       (m/amb))
                                     )))
                task           (m/reduce

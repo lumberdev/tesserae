@@ -16,7 +16,10 @@
 
 (def maybe-edn-regex
   (regal/regex
-    [:cat :start [:alt :digit "@" "\"" "(" "[" "{" [:cat ":" :word] [:negative-lookahead "."]]]))
+    [:cat :start [:alt :digit "@" "(" "[" "{"
+                  [:cat "\"" [:* :whitespace]]              ; pr-str
+                  [:cat ":" :word]                          ; keyword
+                  [:negative-lookahead "."]]]))
 
 (defn likely-edn? [s]
   (boolean (not-empty (re-find maybe-edn-regex s))))
