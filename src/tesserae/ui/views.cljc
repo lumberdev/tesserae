@@ -114,7 +114,7 @@
                   (dom/props {:class [:cursor-pointer "hover:bg-slate-100"]})
                   (dom/on "mousedown"
                           (e/fn [_]
-                            (route/push-state :sheet {:id id})))
+                            (route/push-state :panel {:id id})))
                   (dom/text name))))))))))
 
 (e/defn Nav []
