@@ -252,7 +252,7 @@
 
 (e/defn AtomPre [label a]
   (let [v  (e/watch a)
-        pv (su/pretty-string v)]
+        pv (some-> v su/pretty-string)]
     (when v
       (e/client
         (dom/div

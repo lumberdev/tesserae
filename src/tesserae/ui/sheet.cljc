@@ -133,7 +133,9 @@
                              (dom/text ret-str))))
             ret
             (cond
-              (or (number? ret) (string? ret)) (e/client (dom/text (str ret)))
+              (or (number? ret) (string? ret)) (e/client (dom/div
+                                                           (dom/props {:class [:max-w-screen-sm :max-h-96 :overflow-auto]})
+                                                           (dom/text (str ret))))
               (= :vegalite (uir/content-type ret)) (new ui.vega/VegaLiteEmbed (uir/value ret))
               (= :ui/button (uir/content-type ret)) (e/client
                                                       (let [state (uir/value ret)]
@@ -173,10 +175,16 @@
                                            :innerHTML html)
                                          nil))
               (coll? ret) (let [pretty (su/pretty-string ret)]
-                            (e/client (dom/pre (dom/text pretty)))))
+                            (e/client
+                              (dom/pre
+                                (dom/props {:class [:max-w-screen-sm :max-h-96 :overflow-auto]})
+                                (dom/text pretty)))))
 
             ret-str
-            (e/client (dom/pre #_(e/server (str (type ret))) (dom/text ret-str)))))))))
+            (e/client (dom/pre
+                        (dom/props {:class [:max-w-screen-sm :max-h-96 :overflow-auto]})
+                        #_(e/server (str (type ret)))
+                        (dom/text ret-str)))))))))
 
 (e/defn ClockSym []
   (e/client
@@ -191,10 +199,23 @@
                     }))
       )))
 
+;; fixme HACK
+(defn toggle-class-on-change
+  ([change-val node add-css-classes]
+   (toggle-class-on-change change-val node add-css-classes add-css-classes))
+  ([change-val node add-css-classes remove-css-classes]
+   #?(:cljs
+      (let [cl (.-classList node)]
+        (j/apply cl :add (into-array add-css-classes))
+        (set! (.-offsetWidth node) (.-offsetWidth node))
+        (js/setTimeout
+          #(j/apply cl :remove (into-array remove-css-classes))
+          2000)))))
+
 (e/defn EditableCell
   [{:as         <cell-ent
-    :keys       [db/id]
-    :cell/keys  [form-str pos x y ret-pending? schedule]
+    :keys       [db/id db/updated-at]
+    :cell/keys  [form-str pos x y ret-pending? schedule evaled-at]
     :sheet/keys [_cells cols-count]
     cname       :cell/name}]
   (e/server
@@ -202,10 +223,12 @@
           schedule? (boolean schedule)
           {shed-text :schedule/text} schedule]
       (e/client
-        (let [active-cell-pos (e/watch !active-cell-pos)
-              active?         (= pos active-cell-pos)
-              editor-cell-pos (e/watch !editor-cell-pos)
-              editor?         (= pos editor-cell-pos)]
+        (let [active-cell-pos    (e/watch !active-cell-pos)
+              active?            (= pos active-cell-pos)
+              editor-cell-pos    (e/watch !editor-cell-pos)
+              editor?            (= pos editor-cell-pos)
+              toggle-change-anim (su/f-skip 1 toggle-class-on-change)
+              ]
           (dom/div
             (let [cell-node dom/node]
               (when active? (.focus cell-node))
@@ -229,6 +252,10 @@
                  :tabindex (int
                              (+ (Math/pow (+ cols-count y) 2)
                                 x))})
+              ;; hacky
+              (toggle-change-anim updated-at dom/node
+                                  ["animate-[shadow-pulse-yellow_1s_ease-in-out]" "z-10"]
+                                  ["animate-[shadow-pulse-yellow_1s_ease-in-out]" "z-10"])
               (e/server
                 (new CellRet <cell-ent)
                 (e/client
@@ -363,8 +390,14 @@
                                    {:anchor (e/fn [] (new popup/TriangleAnchor {}))
                                     :items  [{:override
                                               (e/fn []
-                                                (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
-                                                         (dom/text "id " id)))}
+                                                (dom/div
+                                                  (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
+                                                           (dom/text "id: " id))
+                                                  (when evaled-at
+                                                    (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
+                                                             (dom/text "last run: " (su/local-date-time-string evaled-at))))
+
+                                                  ))}
                                              {:label    "run"
                                               :on-click (e/fn [_]
                                                           (e/server
@@ -471,4 +504,3 @@
                      :cell/x        5
                      :cell/y        5
                      :cell/form-str "(sleep 1000)\n(repeatedly 10 #(rand-int 10))"}]}]))
-

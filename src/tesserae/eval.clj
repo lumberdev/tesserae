@@ -22,6 +22,7 @@
   (:import (missionary Cancelled)))
 
 (defonce ^:dynamic *sheet-id* nil)
+(defonce ^:dynamic *cell* nil)
 (defonce
   ^:dynamic
   ^{:doc "dynamic var to capture referenced entities in query-functions - used to make cells reactive"}
@@ -208,19 +209,21 @@
 
 (defn eval-cell [{:as cell :cell/keys [form-str]}]
   ; (println :RUNNING-EVAL cell)
-  (let [cell (dissoc cell :cell/ret :cell/refs :cell/ret-str :cell/ret-pending? :cell/exception?)]
+  (let [cell' (dissoc cell :cell/ret :cell/refs :cell/ret-str :cell/ret-pending? :cell/exception?)]
     (if (str/blank? form-str)
-      (dissoc cell :cell/form-str)
+      (dissoc cell' :cell/form-str)
       (let [{:keys [ret exception cell/refs]}
-            (binding [*sheet-id* (-> cell :sheet/_cells :db/id)]
+            (binding [*cell*     cell
+                      *sheet-id* (-> cell' :sheet/_cells :db/id)]
               (capture-refs #(eval-form-str-map {:form-str (af/edn-ize form-str)})))]
         ; (println :RUNNING-EVAL)
         ; (tesserae.ui.sheet/setxx [:cell/ret ret :cell/refs refs])
         (md/assoc-some
-          cell
+          cell'
           :cell/ret ret
           :cell/refs refs
           :cell/ret-str (if ret (pr-str ret) "")
+          :cell/evaled-at (t/inst (t/now))
           :cell/exception? (boolean exception))))))
 
 (defn fmt-eval-cell [{:as cell :cell/keys [form-str]}]
@@ -260,8 +263,10 @@
           (transact! (conj id-txs (dissoc cell-ent :cell/ret)) tx-meta)
           )))))
 
+(def default-timeout 2e4)
+;(:sheet/_cells (db/entity 20))
 (defn eval-cell-task [{:keys [cell eval-fn timeout]
-                       :or   {timeout 1e4}}]
+                       :or   {timeout default-timeout}}]
   {:pre [cell eval-fn]}
   (m/sp
     (let [evaled-cell (m/?
@@ -280,7 +285,7 @@
 (defn parallel-cells-eval-task
   "Evals cells in parallel"
   [{:keys [cells eval-fn timeout transact-cell!]
-    :or   {timeout 1e4}}]
+    :or   {timeout default-timeout}}]
   (let [flow (m/ap
                ;; fork process for every cell
                ;; to exec in **parallel**
@@ -304,9 +309,10 @@
     task))
 
 (defn db-observe-flow [conn listen-k]
-  (m/observe (fn [!]
-               (d/listen! conn listen-k !)
-               #(d/unlisten! conn listen-k))))
+  (m/observe
+    (fn [!]
+      (d/listen! conn listen-k !)
+      #(d/unlisten! conn listen-k))))
 
 (defstate eval-schedule-listener
   :start

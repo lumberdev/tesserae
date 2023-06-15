@@ -83,12 +83,16 @@
           (throw e#))))
 
 (defn async-watch [!x]
-  (m/sample deref
-            (m/reductions {} !x
-                          (m/ap (m/?> (m/relieve {}
-                                                 (m/observe
-                                                   (fn [!]
-                                                     (add-watch !x ! (fn [! _ _ _] (! nil)))
-                                                     #(remove-watch !x !)))))
-                                (m/? (m/via m/cpu !x))))))
+  (m/sample
+    deref
+    (m/reductions
+      {}
+      !x
+      (m/ap
+        (m/?> (m/relieve {}
+                         (m/observe
+                           (fn [!]
+                             (add-watch !x ! (fn [! _ _ _] (! nil)))
+                             #(remove-watch !x !)))))
+        (m/? (m/via m/cpu !x))))))
 

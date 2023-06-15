@@ -33,6 +33,7 @@
      :cell/schedule   {:db/valueType   :db.type/ref
                        :db/cardinality :db.cardinality/one
                        :db/isComponent true}
+     :cell/evaled-at  {:db/valueType :db.type/instant}
 
      :schedule/text   {:db/valueType :db.type/string}
      :schedule/from   {}
