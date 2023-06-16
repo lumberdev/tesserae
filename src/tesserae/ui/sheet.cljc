@@ -219,9 +219,10 @@
     :sheet/keys [_cells cols-count]
     cname       :cell/name}]
   (e/server
-    (let [cell-ent  (or (db/entity id) <cell-ent)
-          schedule? (boolean schedule)
-          {shed-text :schedule/text} schedule]
+    (let [cell-ent        (or (db/entity id) <cell-ent)
+          schedule?       (boolean schedule)
+          {shed-text :schedule/text sched-next :schedule/next} schedule
+          sched-next-inst (some-> sched-next t/inst)]
       (e/client
         (let [active-cell-pos    (e/watch !active-cell-pos)
               active?            (= pos active-cell-pos)
@@ -334,13 +335,14 @@
                               (dom/on "blur"
                                       (e/fn [e]
                                         (if-let [s (some->> (j/get-in e [:target :value]) str/trim not-empty)]
-                                          (e/server
-                                            ; parse on backend
-                                            (if-let [sched (eval.sched/parse->schedule s)]
-                                              (when (db/transact! [{:db/id         id
-                                                                    :cell/schedule sched}])
-                                                (e/client (reset! !edit-schedule? false)))
-                                              nil))
+                                          (let [zone (su/current-time-zone)]
+                                            (e/server
+                                              ; parse on backend
+                                              (if-let [sched (eval.sched/parse->schedule s {:zone zone})]
+                                                (when (db/transact! [{:db/id         id
+                                                                      :cell/schedule sched}])
+                                                  (e/client (reset! !edit-schedule? false)))
+                                                nil)))
                                           (e/server
                                             (when (db/transact! [[:db/retract id :cell/schedule]])
                                               (e/client (reset! !edit-schedule? false)))
@@ -364,7 +366,7 @@
                                                       :border :border-black :top-full :text-xs :font-mono]})
                                   (cond
                                     repeat (let [next-runs (sequence
-                                                             (comp (filter #(t/> % (t/date-time)))
+                                                             (comp (filter #(t/> % (t/zoned-date-time)))
                                                                    (take 3))
                                                              (iterate #(t/>> % (second repeat)) time-at))]
                                              (dom/text "Next 3 runs:")
@@ -396,14 +398,15 @@
                                                   (when evaled-at
                                                     (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
                                                              (dom/text "last run: " (su/local-date-time-string evaled-at))))
-
-                                                  ))}
+                                                  (when sched-next-inst
+                                                    (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
+                                                             (dom/text "next run: " (su/local-date-time-string sched-next-inst))))))}
                                              {:label    "run"
                                               :on-click (e/fn [_]
                                                           (e/server
                                                             (new eval-tx-cell! cell-ent)
                                                             false))}
-                                             {:label    "add schedule"
+                                             {:label    (str (if schedule? "change" "add") " schedule")
                                               :on-click (e/fn [_]
                                                           (reset! !edit-schedule? true)
                                                           false)}

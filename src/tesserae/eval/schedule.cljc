@@ -7,11 +7,10 @@
             [stuffs.util :as su]))
 
 (def task-grammar
-  "<expr> = (* title *) perms
+  "<expr> = perms
   <perms> = ((rord? tatin? owners?) | (tatin? ?rord owners?) | (owners? tatin? ?rord) | (owners? ?rord ?tatin))
   <rord> = repeat | day
   <tatin> = time-at | time-in
-  title = word+
   <word> = #'\\w+'
   owner = #'@\\w+'
   owners = owner+
@@ -66,8 +65,9 @@
     init
     results))
 
-(defn parse [s & {:keys [default-time-at]
-                  :or   {default-time-at (t/new-time 12 0)}}]
+(defn parse [s & {:keys [default-time-at zone]
+                  :or   {default-time-at (t/new-time 12 0)
+                         zone            (t/zone)}}]
   (let [s (some-> s str/trim)
         p (some-> s not-empty task-parser)]
     (try
@@ -126,9 +126,9 @@
                                                d     (if (or (t/> t-now t) offset)
                                                        (t/tomorrow)
                                                        (t/today))]
-                                           (t/at d t))))})
+                                           (t/in (t/at d t) zone))))})
           (merge-transform-results {:text    s
-                                    :time-at (t/date-time)})))
+                                    :time-at (t/in (t/date-time) zone)})))
       (catch #?(:clj Throwable :cljs js/Error) e
         (assoc {:parse-tree p}
           :errored? true
@@ -159,30 +159,34 @@
   (t/format day-date-time-formatter t))
 
 (defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
-  (if (or (nil? repeat) (and next (t/> next (t/date-time))))
-    sched
-    (let [nex-t (su/ffilter
-                  #(t/> % (t/date-time))
-                  (iterate #(t/>> % (second repeat)) (or next from)))]
+  (let [zd (t/in (t/date-time) (t/zone from))]
+    (if (or (nil? repeat) (and next (t/> next zd)))
+      sched
+      (let [nex-t (su/ffilter
+                    #(t/> % zd)
+                    (iterate #(t/>> % (second repeat)) (or next from)))]
+        (assoc sched :schedule/next nex-t)))))
 
-      (assoc sched :schedule/next nex-t))))
 
 (defn parsed->schedule [{:keys [text time-at repeat time-in errored?]}]
   (when-not errored?
-    (let [base #:schedule{:text text
-                          :from time-at
-                          :next time-at}]
+    (let [ta   (t/zoned-date-time time-at)
+          base #:schedule{:text text
+                          :from ta
+                          :next ta}]
       (if repeat
         (add-next-time (assoc base :schedule/repeat repeat))
         base))))
 
-(defn parse->schedule [s]
-  (parsed->schedule (parse s)))
+(defn parse->schedule [s opts]
+  (parsed->schedule (parse s opts)))
 
 (comment
-  (parse "do this every 5 months")
+  (parse "every 5 months" {:zone "America/Los_Angeles"})
+  (parse "daily at 5p")
+  (parse->schedule "daily at 5p" {:FOPO 1})
   (parse "in 5 hours")
-  (parse "every 1st at 12pm")
+  (parse "every month at 12pm")
   (parse "every hour")
   (parse "every 5s")
   )
