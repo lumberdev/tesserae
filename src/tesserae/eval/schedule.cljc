@@ -158,12 +158,25 @@
 (defn fmt-day-date-time [t]
   (t/format day-date-time-formatter t))
 
+#_(defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
+    (let [zd (t/in (t/date-time) (t/zone from))]
+      (if (or (nil? repeat) (and next (t/> next zd)))
+        sched
+        (let [nex-t (su/ffilter
+                      #(t/> % zd)
+                      (iterate #(t/>> % (second repeat)) (or next from)))]
+          (assoc sched :schedule/next nex-t)))))
+
+
 (defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
-  (let [zd (t/in (t/date-time) (t/zone from))]
-    (if (or (nil? repeat) (and next (t/> next zd)))
+  (let [z  (if (t/zoned-date-time? from)
+             (t/zone from)
+             (t/zone))
+        zd (t/in (t/date-time) z)]
+    (if (or (nil? repeat) (and next (t/> (t/in next z) zd)))
       sched
       (let [nex-t (su/ffilter
-                    #(t/> % zd)
+                    #(t/> (t/in % z) zd)
                     (iterate #(t/>> % (second repeat)) (or next from)))]
         (assoc sched :schedule/next nex-t)))))
 
