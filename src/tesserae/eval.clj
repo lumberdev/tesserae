@@ -314,7 +314,7 @@
       (d/listen! conn listen-k !)
       #(d/unlisten! conn listen-k))))
 
-(defstate eval-schedule-listener
+#_(defstate eval-schedule-listener
   :start
   (let [transact-cell! (fn [c] (db/transact! [c] {:transacted-by ::schedule-listener}))
         >scheds        (->> (db-observe-flow db/conn ::schedule-listener)
