@@ -1,9 +1,10 @@
 (ns tesserae.eval.schedule
   (:require [instaparse.core :as i :include-macros true]
-            [tick.locale-en-us]
             [instaparse.transform :as it]
             [clojure.string :as str]
             [tick.core :as t]
+            [tick.timezone]
+            [tick.locale-en-us]
             [stuffs.util :as su]))
 
 (def task-grammar
@@ -67,7 +68,7 @@
 
 (defn parse [s & {:keys [default-time-at zone]
                   :or   {default-time-at (t/new-time 12 0)
-                         zone            (t/zone)}}]
+                         zone            (su/current-time-zone)}}]
   (let [s (some-> s str/trim)
         p (some-> s not-empty task-parser)]
     (try
@@ -158,7 +159,7 @@
 (defn fmt-day-date-time [t]
   (t/format day-date-time-formatter t))
 
-#_(defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
+(defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
     (let [zd (t/in (t/date-time) (t/zone from))]
       (if (or (nil? repeat) (and next (t/> next zd)))
         sched
@@ -166,20 +167,6 @@
                       #(t/> % zd)
                       (iterate #(t/>> % (second repeat)) (or next from)))]
           (assoc sched :schedule/next nex-t)))))
-
-
-(defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
-  (let [z  (if (t/zoned-date-time? from)
-             (t/zone from)
-             (t/zone))
-        zd (t/in (t/date-time) z)]
-    (if (or (nil? repeat) (and next (t/> (t/in next z) zd)))
-      sched
-      (let [nex-t (su/ffilter
-                    #(t/> (t/in % z) zd)
-                    (iterate #(t/>> % (second repeat)) (or next from)))]
-        (assoc sched :schedule/next nex-t)))))
-
 
 (defn parsed->schedule [{:keys [text time-at repeat time-in errored?]}]
   (when-not errored?

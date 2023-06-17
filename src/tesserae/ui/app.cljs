@@ -1,6 +1,6 @@
 (ns tesserae.ui.app
   (:require [clojure.string :as str]
-            [hyperfiddle.electric :as p]
+            [hyperfiddle.electric :as e]
             [hyperfiddle.electric-dom2 :as dom]
             [tesserae.ui.globals :as g]
             [tesserae.ui.views :as views :include-macros true]
@@ -28,7 +28,7 @@
             :title
             (->> route-match :data :name (str "Tesserae "))))
 
-(p/def re-router
+(e/def re-router
   (->> (m/observe
          (fn [!]
            (rfe/start!
@@ -39,7 +39,7 @@
        new))
 
 (def electric-main
-  (p/boot
+  (e/boot
     (binding [dom/node (dom/by-id "root")]
       (let [{:as match :keys [data query-params path-params]} re-router]
         (binding [g/route-match match
