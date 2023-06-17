@@ -115,15 +115,17 @@
                                          (let [{:keys [day-hour day-hour-minutes am-pm offset]
                                                 :or   {day-hour-minutes 0 am-pm :am}}
                                                (into {} args)
-                                               t-now (t/new-time)
+                                               t-now (t/in (t/now) zone)
                                                t     (if-not day-hour
                                                        (if offset
                                                          ;; if tomorrow use default time, otherwise nowtime
                                                          default-time-at
-                                                         (t/new-time))
+                                                         t-now)
                                                        (let [hour-adjusted (cond-> day-hour
                                                                              (and (< day-hour 12) (= am-pm :pm)) (+ 12))]
-                                                         (t/new-time hour-adjusted day-hour-minutes)))
+                                                         (-> (t/today)
+                                                             (t/at (t/new-time hour-adjusted day-hour-minutes))
+                                                             (t/in zone))))
                                                d     (if (or (t/> t-now t) offset)
                                                        (t/tomorrow)
                                                        (t/today))]
@@ -160,13 +162,13 @@
   (t/format day-date-time-formatter t))
 
 (defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
-    (let [zd (t/in (t/date-time) (t/zone from))]
-      (if (or (nil? repeat) (and next (t/> next zd)))
-        sched
-        (let [nex-t (su/ffilter
-                      #(t/> % zd)
-                      (iterate #(t/>> % (second repeat)) (or next from)))]
-          (assoc sched :schedule/next nex-t)))))
+  (let [zd (t/in (t/now) (t/zone from))]
+    (if (or (nil? repeat) (and next (t/> next zd)))
+      sched
+      (let [nex-t (su/ffilter
+                    #(t/> % zd)
+                    (iterate #(t/>> % (second repeat)) (or next from)))]
+        (assoc sched :schedule/next nex-t)))))
 
 (defn parsed->schedule [{:keys [text time-at repeat time-in errored?]}]
   (when-not errored?
@@ -184,11 +186,12 @@
 (comment
   (parse "every 5 months" {:zone "America/Los_Angeles"})
   (parse "daily at 5p")
-  (parse->schedule "daily at 5p" {:FOPO 1})
+  (parse "daily at 6p" {:zone "America/New_York"})
+  (parse->schedule "daily at 6p" {:zone "America/New_York"})
   (parse "in 5 hours")
   (parse "every month at 12pm")
   (parse "every hour")
   (parse "every 5s")
+  (parse->schedule "at 3:25p" {})
+  (parse->schedule "at 4:10p" {:zone "America/New_York"})
   )
-
-

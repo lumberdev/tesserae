@@ -314,7 +314,7 @@
       (d/listen! conn listen-k !)
       #(d/unlisten! conn listen-k))))
 
-#_(defstate eval-schedule-listener
+(defstate eval-schedule-listener
   :start
   (let [transact-cell! (fn [c] (db/transact! [c] {:transacted-by ::schedule-listener}))
         >scheds        (->> (db-observe-flow db/conn ::schedule-listener)
@@ -337,9 +337,7 @@
                                                                >scheds))
                                ;; cancel previous schedule when a new one appears
                                {cell :cell/_schedule snext :schedule/next :as sched} (m/?< >scheds)
-                               wait (t/millis (t/between (t/date-time) snext))
-                               ]
-
+                               wait (t/millis (t/between (t/now) snext))]
                            (try
                              #_(println :sleep wait cell-id (:db/id sched) (:db/updated-at sched))
                              (m/? (m/sleep wait))
