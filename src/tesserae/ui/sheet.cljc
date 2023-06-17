@@ -334,19 +334,18 @@
                                                               (.blur dom/node)))))
                               (dom/on "blur"
                                       (e/fn [e]
-                                        (if-let [s (some->> (j/get-in e [:target :value]) str/trim not-empty)]
-                                          (let [zone (su/current-time-zone)]
+                                        (let [sched-str (some->> (j/get-in e [:target :value]) str/trim not-empty)]
+                                          (if sched-str
                                             (e/server
-                                              ; parse on backend
-                                              (if-let [sched (eval.sched/parse->schedule s {:zone zone})]
+                                              (when-let [sched (eval.sched/parsed->schedule parsed)]
                                                 (when (db/transact! [{:db/id         id
                                                                       :cell/schedule sched}])
                                                   (e/client (reset! !edit-schedule? false)))
-                                                nil)))
-                                          (e/server
-                                            (when (db/transact! [[:db/retract id :cell/schedule]])
-                                              (e/client (reset! !edit-schedule? false)))
-                                            nil))))
+                                                nil))
+                                            (e/server
+                                              (when (db/transact! [[:db/retract id :cell/schedule]])
+                                                (e/client (reset! !edit-schedule? false)))
+                                              nil)))))
                               (dom/on "input"
                                       (e/fn [e]
                                         (reset! !parsed
@@ -398,9 +397,9 @@
                                                   (when evaled-at
                                                     (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
                                                              (dom/text "last run: " (su/local-date-time-string evaled-at))))
-                                                  (when sched-next-inst
+                                                  (when sched-next
                                                     (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
-                                                             (dom/text "next run: " (su/local-date-time-string sched-next-inst))))))}
+                                                             (dom/text "next run: " (su/local-date-time-string sched-next))))))}
                                              {:label    "run"
                                               :on-click (e/fn [_]
                                                           (e/server

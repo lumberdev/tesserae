@@ -16,6 +16,7 @@
     [tesserae.ui.vega :as ui.vega]
     [stuffs.route :as route]
     [stuffs.util :as su]
+    [tesserae.serialize]
     #?@(:clj [[datalevin.core :as d]
               [stuffs.datalevin.util :as sdu]
               [tesserae.db :as db]]))
