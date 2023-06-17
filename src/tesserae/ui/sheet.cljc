@@ -373,8 +373,9 @@
                                                (dom/props {:class [:pl-3]})
                                                (e/for [r next-runs]
                                                  (dom/div (dom/text (eval.sched/fmt-day-date-time r))))))
-                                    time-at (dom/div (dom/text (eval.sched/fmt-day-date-time time-at)))
-                                    time-in (dom/div (dom/text (eval.sched/fmt-day-date-time time-in))))))
+                                    time-in (dom/div (dom/text (eval.sched/fmt-day-date-time
+                                                                 (t/>> time-at (second time-in)))))
+                                    time-at (dom/div (dom/text (eval.sched/fmt-day-date-time time-at))))))
                               ))))
                       (when active?
                         (e/client
