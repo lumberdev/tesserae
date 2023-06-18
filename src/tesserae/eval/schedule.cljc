@@ -5,17 +5,16 @@
             [tick.core :as t]
             [tick.timezone]
             [tick.locale-en-us]
-            [stuffs.util :as su]))
+            [stuffs.util :as su])
+  (:refer-clojure :exclude [future?]))
 
 (def task-grammar
   "<expr> = perms
-  <perms> = ((rord? tatin? owners?) | (tatin? ?rord owners?) | (owners? tatin? ?rord) | (owners? ?rord ?tatin))
+  <perms> = ((rord? tatin?) | (tatin? ?rord))
   <rord> = repeat | day
   <tatin> = time-at | time-in
   <word> = #'\\w+'
-  owner = #'@\\w+'
-  owners = owner+
-  repeat = (<'every'> (period | day)) | period-interval
+  repeat = (<'every'> (period | day | day-range)) | period-interval
   period = (period-number? period-unit)
   period-number = #'\\d+'
   period-unit = period-seconds | period-minutes | period-hours | period-days | period-weeks | period-months | period-years
@@ -28,6 +27,7 @@
   period-years = 'year' | 'years'
   period-interval = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly'
   day = 'mon'|'tue'|'wed'|'weds'|'thu'|'thurs'|'fri'|'sat'|'sats'|'sun'|'monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday'
+  day-range = 'weekday' | 'weekdays'
   offset = 'tom' | 'tomorrow'
   time-in = <'in'>? period
   time-at = offset? <'at'>? (day-hour (<':'> day-hour-minutes)? am-pm?)
@@ -66,6 +66,13 @@
     init
     results))
 
+(def weekdays
+  #{t/MONDAY
+    t/TUESDAY
+    t/WEDNESDAY
+    t/THURSDAY
+    t/FRIDAY})
+
 (defn parse [s & {:keys [default-time-at zone]
                   :or   {default-time-at (t/new-time 12 0)
                          zone            (su/current-time-zone)}}]
@@ -79,12 +86,16 @@
           not-empty
           (it/transform
             {:title            (tagged :title #(str/join " " %&))
-             :owner            #(subs % 1)
-             :owners           (tagged :owners #(vec %&))
+             ;:owner            #(subs % 1)
+             ;:owners           (tagged :owners #(vec %&))
              ;:repeat           (tagged :repeat #(vec %&))
              :day              (tagged :day t/parse-day)
              :day-hour         (tagged :day-hour su/parse-int)
              :day-hour-minutes (tagged :day-hour-minutes su/parse-int)
+             :day-range        (tagged :days
+                                       (fn [day-range]
+                                         (case day-range
+                                           ("weekday" "weekdays") weekdays)))
              :period           (tagged :period
                                        (fn [& args]
                                          (let [{:keys [period-number period-unit]} (into {:period-number 1} args)]
@@ -169,15 +180,38 @@
     #(t/> % now-t)
     (next-times prev-t interval)))
 
+(defn days-seq
+  ([] (days-seq (t/today)))
+  ([start]
+   (iterate #(t/>> % (t/new-period 1 :days)) start)))
+
+(defn next-matching-days [start day-set]
+  (filter #(contains? day-set (t/day-of-week %)) (days-seq start)))
+
+(defn next-matching-day [day-set]
+  (su/ffilter #(contains? day-set (t/day-of-week %)) (days-seq)))
+
+(defn future? [d]
+  (t/> d (t/now)))
+
+(defn next-weekday []
+  (next-matching-day weekdays))
+
 (defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
   (let [zd (t/in (t/now) (t/zone from))]
     (cond
       (and next (t/> next zd)) sched
       (nil? repeat) (dissoc sched :schedule/next)
-      repeat (assoc sched
-               :schedule/next (next-time (or next from)
-                                         zd
-                                         (second repeat))))))
+      repeat (let [[tag v] repeat]
+               (assoc sched
+                 :schedule/next (case tag
+                                  :period (next-time (or next from)
+                                                     zd
+                                                     v)
+                                  :days (su/ffilter
+                                          future?
+                                          (next-matching-days
+                                            (or next from) v))))))))
 
 (defn parsed->schedule [{:keys [text time-at repeat time-in errored?]}]
   (when-not errored?
@@ -198,17 +232,20 @@
 (comment
   (parse "every 5 months" {:zone "America/Los_Angeles"})
   (parse "daily at 5p")
+  (parse "daily at 5p")
   (parse "daily at 6p" {:zone "America/New_York"})
-  (parse->schedule "daily at 6p" {:zone "America/New_York"})
   (parse "in 5 hours")
   (parse "every month at 12pm")
   (parse "every hour")
   (parse "every 5s")
   (parse "in 5m")
+  (parse "in 2 min" {:zone "America/New_York"})
+  (parse->schedule "daily at 6p" {:zone "America/New_York"})
   (parse->schedule "at 3:25p" {})
   (parse->schedule "every hour" {})
   (parse->schedule "at 4:10p" {:zone "America/New_York"})
-  (parse "in 2 min" {:zone "America/New_York"})
   (parse->schedule "in 1 hour" {:zone "America/New_York"})
   (parse->schedule "every 2s" {:zone "America/New_York"})
+  (parse "every weekday" {:zone "America/New_York"})
+  (parse->schedule "every weekday at 6pm" {:zone "America/New_York"})
   )

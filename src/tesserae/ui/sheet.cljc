@@ -364,10 +364,13 @@
                                   (dom/props {:class [:absolute :z-30 :w-max :p-1 :flex :flex-col :bg-white
                                                       :border :border-black :top-full :text-xs :font-mono]})
                                   (cond
-                                    repeat (let [next-runs (sequence
-                                                             (comp (filter #(t/> % (t/zoned-date-time)))
+                                    repeat (let [[tag v] repeat
+                                                 next-runs (sequence
+                                                             (comp (filter eval.sched/future?)
                                                                    (take 3))
-                                                             (iterate #(t/>> % (second repeat)) time-at))]
+                                                             (case tag
+                                                               :days (eval.sched/next-matching-days time-at v)
+                                                               :period (eval.sched/next-times time-at v)))]
                                              (dom/text "Next 3 runs:")
                                              (dom/div
                                                (dom/props {:class [:pl-3]})
