@@ -188,10 +188,11 @@
 (defn future? [d]
   (t/> d (t/now)))
 
-(defn next-matching-days [start day-set]
-  (filter #(and (contains? day-set (t/day-of-week %))
-                (future? %))
-          (days-seq start)))
+(defn next-matching-days [start days]
+  (let [day-set (su/ensure-set days)]
+    (filter #(and (contains? day-set (t/day-of-week %))
+                  (future? %))
+            (days-seq start))))
 
 (defn next-matching-day [day-set]
   (su/ffilter #(contains? day-set (t/day-of-week %)) (days-seq)))
@@ -200,7 +201,7 @@
   (next-matching-day weekdays))
 
 (defn next-time-of-days [start days]
-  (first (next-matching-days start (su/ensure-set days))))
+  (first (next-matching-days start days)))
 
 (defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
   (let [zd (t/in (t/now) (t/zone from))]
