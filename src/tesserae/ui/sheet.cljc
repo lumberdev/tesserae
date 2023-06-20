@@ -369,7 +369,7 @@
                                                              (comp (filter eval.sched/future?)
                                                                    (take 3))
                                                              (case tag
-                                                               :days (eval.sched/next-matching-days time-at v)
+                                                               (:day :days) (eval.sched/next-time-of-days time-at v)
                                                                :period (eval.sched/next-times time-at v)))]
                                              (dom/text "Next 3 runs:")
                                              (dom/div
