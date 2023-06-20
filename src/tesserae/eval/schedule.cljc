@@ -173,7 +173,7 @@
   (t/format day-date-time-formatter t))
 
 (defn next-times [start-t interval]
-  (iterate #(t/>> % interval) start-t))
+  (drop 1 (iterate #(t/>> % interval) start-t)))
 
 (defn next-time [prev-t now-t interval]
   (su/ffilter
@@ -185,17 +185,22 @@
   ([start]
    (iterate #(t/>> % (t/new-period 1 :days)) start)))
 
+(defn future? [d]
+  (t/> d (t/now)))
+
 (defn next-matching-days [start day-set]
-  (filter #(contains? day-set (t/day-of-week %)) (days-seq start)))
+  (filter #(and (contains? day-set (t/day-of-week %))
+                (future? %))
+          (days-seq start)))
 
 (defn next-matching-day [day-set]
   (su/ffilter #(contains? day-set (t/day-of-week %)) (days-seq)))
 
-(defn future? [d]
-  (t/> d (t/now)))
-
 (defn next-weekday []
   (next-matching-day weekdays))
+
+(defn next-time-of-days [start days]
+  (first (next-matching-days start (su/ensure-set days))))
 
 (defn add-next-time [{:as sched :schedule/keys [from repeat next]}]
   (let [zd (t/in (t/now) (t/zone from))]
@@ -205,26 +210,25 @@
       repeat (let [[tag v] repeat]
                (assoc sched
                  :schedule/next (case tag
-                                  :period (next-time (or next from)
-                                                     zd
-                                                     v)
-                                  :days (su/ffilter
-                                          future?
-                                          (next-matching-days
-                                            (or next from) v))))))))
+                                  :period (next-time (or next from) zd v)
+                                  (:day :days) (next-time-of-days (or next from) v)))))))
 
-(defn parsed->schedule [{:keys [text time-at repeat time-in errored?]}]
+(defn parsed->schedule [{:keys [text time-at repeat time-in errored? day]}]
   (when-not errored?
     (let [base #:schedule{:text text
-                          :from time-at
-                          :next time-at}]
+                          :from time-at}]
       (cond
         repeat (add-next-time (assoc base :schedule/repeat repeat))
         time-in (-> base
                     (assoc :schedule/repeat time-in)
                     add-next-time
                     (dissoc :schedule/repeat))
-        :else base))))
+        day (-> base
+                (assoc :schedule/repeat [:day day])
+                add-next-time
+                (dissoc :schedule/repeat))
+        :else (assoc base
+                :schedule/next time-at)))))
 
 (defn parse->schedule [s opts]
   (parsed->schedule (parse s opts)))
@@ -236,6 +240,9 @@
   (parse "daily at 6p" {:zone "America/New_York"})
   (parse "in 5 hours")
   (parse "every month at 12pm")
+  (parse "every 2 days at 12pm")
+  (parse "weds at 12pm")
+  (parse->schedule "weds at 12pm" {})
   (parse "every hour")
   (parse "every 5s")
   (parse "in 5m")
@@ -248,4 +255,8 @@
   (parse->schedule "every 2s" {:zone "America/New_York"})
   (parse "every weekday" {:zone "America/New_York"})
   (parse->schedule "every weekday at 6pm" {:zone "America/New_York"})
+  (task-parser "every fri at 6pm")
+  (parse "every fri at 6pm" {:zone "America/New_York"})
+  (parse->schedule "every fri at 6pm" {:zone "America/New_York"})
+  (parse->schedule "every 5 months" {:zone "America/Los_Angeles"})
   )
