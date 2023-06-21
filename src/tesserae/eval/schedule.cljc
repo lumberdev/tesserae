@@ -214,8 +214,8 @@
                                   :period (next-time (or next from) zd v)
                                   (:day :days) (next-time-of-days (or next from) v)))))))
 
-(defn parsed->schedule [{:keys [text time-at repeat time-in errored? day]}]
-  (when-not errored?
+(defn parsed->schedule [{:as m :keys [text time-at repeat time-in errored? day]}]
+  (when (and m (not errored?))
     (let [base #:schedule{:text text
                           :from time-at}]
       (cond
