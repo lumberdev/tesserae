@@ -192,8 +192,8 @@
       (md/assoc-some ret :cell/refs (some-> *ref-ids* deref not-empty vec)))))
 
 (defn fmt-clj-str [s]
-  (cfmt/reformat-string
-    s))
+  (cond-> s
+    (af/likely-edn? s) cfmt/reformat-string))
 
 (defn fmt-cell-formstr [{:as cell-map :keys [cell/form-str]}]
   (try (-> cell-map
@@ -314,68 +314,87 @@
       (d/listen! conn listen-k !)
       #(d/unlisten! conn listen-k))))
 
+(defonce debug-scheduled
+  (atom {}))
+
+(defn merge-flows
+  "Returns a flow that merges provided flows"
+  [a b]
+  (m/ap (m/?> (m/amb= a b))))
+
 (defstate eval-schedule-listener
   :start
-  (let [transact-cell! (fn [c] (db/transact! [c] {:transacted-by ::schedule-listener}))
-        >scheds        (->> (db-observe-flow db/conn ::schedule-listener)
-                            (m/eduction
-                              (mapcat (fn [{:as m :keys [db-after tx-data]}]
-                                        (let [m (dissoc m :tx-data)]
-                                          (map #(assoc m :datom %) tx-data))))
-                              (filter (fn [{{:keys [a added]} :datom}]
-                                        (and added (= a :schedule/next))))
-                              (map (fn [{{:keys [e]} :datom
-                                         :keys       [db-after]}]
-                                     (d/entity db-after e)))
-                              ;; ignore orphan schedules
-                              (filter :cell/_schedule)
-                              (map eval.sched/add-next-time)))
-        eval-by-id     (m/ap
-                         ;; group schedules by cell-ids
-                         (let [[cell-id >scheds] (m/?> ##Inf (m/group-by
-                                                               (comp :db/id :cell/_schedule)
-                                                               >scheds))
-                               ;; cancel previous schedule when a new one appears
-                               {cell :cell/_schedule snext :schedule/next :as sched} (m/?< >scheds)
-                               wait (t/millis (t/between (t/now) snext))]
-                           (try
-                             #_(println :sleep wait cell-id (:db/id sched) (:db/updated-at sched))
-                             (m/? (m/sleep wait))
-                             ;(println :done-sleep)
-                             (transact-cell! (assoc cell :cell/ret-pending? true))
+  (let [_               (swap! debug-scheduled empty)
+        transact-cell!  (fn [c] (db/transact! [c] {:transacted-by ::schedule-listener}))
+        observed-scheds (->> (db-observe-flow db/conn ::schedule-listener)
+                             (m/eduction
+                               (mapcat (fn [{:as m :keys [db-after tx-data]}]
+                                         (let [m (dissoc m :tx-data)]
+                                           (map #(assoc m :datom %) tx-data))))
+                               (filter (fn [{{:keys [a added]} :datom}]
+                                         (and added (= a :schedule/next))))
+                               (map (fn [{{:keys [e]} :datom
+                                          :keys       [db-after]}]
+                                      (d/entity db-after e)))))
+        >scheds         (->> (merge-flows (m/seed (db/datoms->entities :ave :schedule/from))
+                                          observed-scheds)
+                             (m/eduction
+                               ;; ignore orphan schedules
+                               (filter :cell/_schedule)
+                               (map eval.sched/add-next-time)))
+        eval-by-id      (m/ap
+                          ;; group schedules by cell-ids
+                          (let [[cell-id >scheds] (m/?> ##Inf (m/group-by
+                                                                (comp :db/id :cell/_schedule)
+                                                                >scheds))
+                                _    (println :new cell-id)
+                                ;; cancel previous schedule when a new one appears
+                                {cell :cell/_schedule snext :schedule/next :as sched} (m/?< >scheds)
+                                wait (t/millis (t/between (t/now) snext))]
+                            (swap! debug-scheduled assoc cell-id {:wait wait
+                                                                  :now  (t/now)})
+                            (try
+                              #_(println :sleep wait cell-id (:db/id sched) (:db/updated-at sched))
+                              (m/? (m/sleep wait))
+                              ;(println :done-sleep)
+                              (transact-cell! (assoc cell :cell/ret-pending? true))
 
-                             [(eval.sched/add-next-time sched)
-                              (m/?
-                                (eval-cell-task {:cell    cell
-                                                 :eval-fn eval-cell}))]
-                             (catch missionary.Cancelled c
-                               (println ::schedule-listener-cancelled-eval-cell cell-id)
-                               (transact-cell! (assoc cell :cell/ret-pending? false))
-                               (m/amb))
-                             )
-                           ))
-        task           (m/reduce
-                         (fn [out sched+cell]
-                           ;(def s (first sched+cell))
-                           ;(println :Fi (first sched+cell))
-                           #_(let [[sched cell] sched+cell]
-                               (println ::sched-evaled #_(:db/id (second sched+cell))
-                                        (:db/id sched) (:db/updated-at sched)))
-                           (d/transact! db/conn sched+cell {:transacted-by ::schedule-listener})
-                           )
-                         []
-                         eval-by-id)
-        cancel         (task #(println :success %)
-                             #(println :fail %))]
-    (db/transact!
-      (sequence
-        (comp
-          (filter :cell/_schedule)
-          (map eval.sched/add-next-time))
-        (db/datoms->entities :ave :schedule/from))
-      {:transacted-by ::schedule-listener})
+                              [(eval.sched/add-next-time sched)
+                               (m/?
+                                 (eval-cell-task {:cell    cell
+                                                  :eval-fn eval-cell}))]
+                              (catch missionary.Cancelled c
+                                (println ::schedule-listener-cancelled-eval-cell cell-id)
+                                (transact-cell! (assoc cell :cell/ret-pending? false))
+                                (m/amb))
+                              )
+                            ))
+        task            (m/reduce
+                          (fn [out sched+cell]
+                            ;(def s (first sched+cell))
+                            ;(println :Fi (first sched+cell))
+                            #_(let [[sched cell] sched+cell]
+                              (println ::sched-evaled (:db/id (second sched+cell))
+                                       (:db/id sched) (:db/updated-at sched)))
+                            (d/transact! db/conn sched+cell {:transacted-by ::schedule-listener})
+                            )
+                          []
+                          eval-by-id)
+        cancel          (task #(println :success %)
+                              #(println :fail %))]
     cancel)
   :stop (eval-schedule-listener))
+
+(comment
+  (db/transact!
+    (map (fn [sched-ent]
+           (assoc (tesserae.eval.schedule/parse->schedule (:schedule/text sched-ent) {:zone "America/New_York"})
+             :db/id (:db/id sched-ent))
+           )
+         (db/datoms->entities :ave :schedule/text))))
+
+(comment
+  (db/transact! (map (fn [x] [:db/retractEntity (:db/id x)]) (remove :cell/_schedule (db/datoms->entities :ave :schedule/text)))))
 
 
 (defstate db-eval-refs-listener
