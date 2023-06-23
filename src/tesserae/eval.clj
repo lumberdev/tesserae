@@ -347,7 +347,6 @@
                           (let [[cell-id >scheds] (m/?> ##Inf (m/group-by
                                                                 (comp :db/id :cell/_schedule)
                                                                 >scheds))
-                                _    (println :new cell-id)
                                 ;; cancel previous schedule when a new one appears
                                 {cell :cell/_schedule snext :schedule/next :as sched} (m/?< >scheds)
                                 wait (t/millis (t/between (t/now) snext))]
