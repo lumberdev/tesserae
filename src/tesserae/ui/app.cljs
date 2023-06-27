@@ -49,19 +49,6 @@
 
 (defonce reactor nil)
 
-#_(defn mystery-hash-reload-hack
-  "This only happens on Safari.
-  A hash appears in the url after a few auth redirects.
-  This removes it and reloads the page..."
-  []
-  (when (str/includes?
-          (j/get-in js/window [:location :href]) "#")
-    (j/call-in js/window
-               [:history :pushState]
-               "" ""
-               (.-pathname js/location))
-    (j/call-in js/window [:location :reload])))
-
 (defn ^:dev/after-load ^:export start []
   (assert (nil? reactor) "reactor already running")
   (set! reactor (electric-main

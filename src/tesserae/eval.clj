@@ -29,6 +29,41 @@
   *ref-ids*
   nil)
 
+(defn move [dir x y width height]
+  (letfn [(cyc [v max] (if (zero? v) max v))
+          (modc [cv op max] (cyc (mod (op cv) max) max))]
+    (case dir
+      :right [(modc x inc width) y]
+      :left [(modc x dec width) y]
+      :up [x (modc y dec height)]
+      :down [x (modc y inc height)])))
+
+(defn neighbor-pos [dir cell]
+  (let [{:cell/keys                            [x y]
+         {:sheet/keys [cols-count rows-count]} :sheet/_cells} cell]
+    (move dir x y cols-count rows-count)))
+
+(defn add-*ref-ids*! [{:as ent :keys [db/id]}]
+  (when (and id *ref-ids*)
+    (swap! *ref-ids* conj (:db/id ent)))
+  ent)
+
+(defn neighbor
+  ([dir]
+   (neighbor dir *cell*))
+  ([dir cell]
+   (let [{:cell/keys [x y]} cell
+         sheet-id (-> cell :sheet/_cells :db/id)
+         {:sheet/keys [cols-count rows-count] :as sheet} (db/entity sheet-id)
+         [nx ny :as pos] (move dir x y cols-count rows-count)]
+     (or
+       (add-*ref-ids*!
+         (db/where-entity
+           [[sheet-id :sheet/cells '?e]
+            ['?e :cell/pos [nx ny]]]))
+       {:sheet/_cells sheet
+        :cell/x       nx
+        :cell/y       ny}))))
 
 (defn sheet-fns [conn]
   (letfn [(cell-by-name
@@ -36,14 +71,50 @@
              (cell-by-name @conn cell-name))
             ([db cell-name]
              (assert *sheet-id* "*sheet-id* cannot be nil")
-             (when-let [ent (sdu/where-entity
-                              db
-                              [[*sheet-id* :sheet/cells '?e]
-                               ['?e :cell/name cell-name]])]
-               (swap! *ref-ids* conj (:db/id ent))
-               ent)))]
-    (let [$name (comp uir/value :cell/ret cell-by-name)]
-      {'$ $name})))
+             (add-*ref-ids*!
+               (sdu/where-entity
+                 db
+                 [[*sheet-id* :sheet/cells '?e]
+                  ['?e :cell/name cell-name]]))))
+          (cell-by-coord
+            ([x y]
+             (cell-by-coord @conn x y))
+            ([db x y]
+             (assert *sheet-id* "*sheet-id* cannot be nil")
+             (assert *cell* "*cell* cannot be nil")
+             (let [{cx :cell/x cy :cell/y} *cell*
+                   x (if (integer? x) x cx)
+                   y (if (integer? y) y cy)]
+               (add-*ref-ids*!
+                 (sdu/where-entity
+                   db
+                   [[*sheet-id* :sheet/cells '?e]
+                    ['?e :cell/pos [x y]]])))))
+          (set-code [ent-or-cell-name code]
+            (when-let [ent (cond
+                             (or (sdu/entity? ent-or-cell-name)
+                                 (map? ent-or-cell-name)) ent-or-cell-name
+                             (string? ent-or-cell-name) (cell-by-name ent-or-cell-name)
+                             :else nil)]
+              (d/transact! conn [(-> ent
+                                     (assoc :cell/form-str
+                                            (cond-> code
+                                              (not (string? code)) pr-str))
+                                     (update :sheet/_cells :db/id))])
+              true)
+            )]
+    (let [$name     (comp uir/value :cell/ret cell-by-name)
+          $code-str (comp :cell/form-str cell-by-name)]
+      {'$                  $name
+       '$code-str          $code-str
+       '$coord             (su/some-comp uir/value :cell/ret cell-by-coord)
+       ;; fixme improve naming
+       '$neighbor          (su/some-comp uir/value :cell/ret neighbor)
+       '$neighbor-code-str (su/some-comp :cell/form-str neighbor)
+       '$set-neighbor-code (fn [dir code]
+                             (some-> (neighbor dir) (set-code code)))
+       '$set-code          set-code
+       })))
 
 (defn namespaces [alias-sym->ns-sym-or-resolved-ns-map]
   (update-vals
@@ -62,6 +133,16 @@
     (fn [qualified-sym-or-var]
       (cond-> qualified-sym-or-var
         (qualified-symbol? qualified-sym-or-var) requiring-resolve))))
+
+(declare eval-form eval-form-or-str sci-ctx mame-parse)
+
+(defn eval-form-or-str
+  ([x]
+   (cond->> x
+     (string? x) mame-parse
+     true eval-form)))
+
+(def sci-*cell* (sci/new-dynamic-var '*cell*))
 
 (defstate sci-ctx
   :start
@@ -93,9 +174,12 @@
                         {:namespaces
                          (update-vals nss keys)})}
                (bindings {slurp    `slurp
+                          'eval    eval-form-or-str
                           'sleep   (fn [ms] (Thread/sleep ms))
                           'println println
-                          'tap>    tap>})
+                          'tap>    tap>
+                          '*cell*  sci-*cell*
+                          })
                (some-> (mount/args) ::bindings bindings))]
     (sci/init
       {:bindings   bdgs
@@ -106,6 +190,17 @@
     (atom (sci-utils/namespace-object
             (:env sci-ctx)
             'user true nil)))
+
+(comment
+  '(do
+     (let [rewritten (openai/chat-1 {:message
+                                     (str "Make this clojure code more interesting: "
+                                          ($neighbor-code :up))})])
+
+     ($set-neighbor-code
+       :right
+       rewritten)
+     :done))
 
 (defn make-ns [ns-str]
   (sci-utils/namespace-object
@@ -118,11 +213,14 @@
 (defn eval-form
   ([form] (eval-form sci-ctx form))
   ([ctx form]
-   (sci/with-bindings {sci/out *out*
-                       sci/in  *in*
-                       ; sci/ns  @current-ns
-                       }
-                      (sci/eval-form ctx form))))
+   (sci/with-bindings
+     {sci/out    *out*
+      sci/in     *in*
+      ;; binding from dynamic clojure land into dynamic sci land
+      sci-*cell* *cell*
+      ; sci/ns  @current-ns
+      }
+     (sci/eval-form ctx form))))
 
 
 (defn exec-form [form]
@@ -308,6 +406,15 @@
                        flow)]
     task))
 
+(comment
+  (def sheet (db/entity 1))
+  (m/? (parallel-cells-eval-task {:cells          (:sheet/cells sheet)
+                                  :eval-fn        eval-cell
+                                  :transact-cell! #(db/transact! [%])}))
+
+  )
+
+
 (defn db-observe-flow [conn listen-k]
   (m/observe
     (fn [!]
@@ -373,8 +480,8 @@
                             ;(def s (first sched+cell))
                             ;(println :Fi (first sched+cell))
                             #_(let [[sched cell] sched+cell]
-                              (println ::sched-evaled (:db/id (second sched+cell))
-                                       (:db/id sched) (:db/updated-at sched)))
+                                (println ::sched-evaled (:db/id (second sched+cell))
+                                         (:db/id sched) (:db/updated-at sched)))
                             (d/transact! db/conn sched+cell {:transacted-by ::schedule-listener})
                             )
                           []
