@@ -241,7 +241,12 @@
               (dom/on "keydown"
                       (e/fn [e]
                         (keybind/chord-case e
-                          "enter" (reset! !editor-cell-pos pos))))
+                          "enter" (reset! !editor-cell-pos pos)
+                          "shift+enter" (do
+                                          (.preventDefault e)
+                                          (e/server
+                                            (new eval-tx-cell! cell-ent)
+                                            nil)))))
               (dom/props
                 {:class    ["bg-white" "flex" "flex-col" :outline-none :rounded-sm
                             (when active? "z-10")
@@ -273,9 +278,8 @@
                                   "shift+enter" (let [s (-> (j/get-in e [:target :value]) str/trim)]
                                                   (.preventDefault e)
                                                   (e/server
-                                                    (db/transact! [(assoc cell-ent :cell/form-str s)])
-                                                    nil)
-                                                  )
+                                                    (new eval-tx-cell! (assoc cell-ent :cell/form-str s))
+                                                    false))
                                   "esc" (do #_(.blur dom/node)
                                           (.focus cell-node)))))
                       (dom/on "blur"
