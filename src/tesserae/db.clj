@@ -16,29 +16,30 @@
     (when env/dev?
       {:dev-id {:db/valueType :db.type/string
                 :db/unique    :db.unique/identity}})
-    {:sheet/name      {:db/valueType :db.type/string}
-     :sheet/cells     {:db/valueType   :db.type/ref
-                       :db/cardinality :db.cardinality/many
-                       :db/isComponent true}
-     :sheet/size      {:db/valueType  :db.type/tuple
-                       :db/tupleAttrs [:sheet/cols-count :sheet/rows-count]}
+    {:sheet/name                {:db/valueType :db.type/string}
+     :sheet/cells               {:db/valueType   :db.type/ref
+                                 :db/cardinality :db.cardinality/many
+                                 :db/isComponent true}
+     :sheet/size                {:db/valueType  :db.type/tuple
+                                 :db/tupleAttrs [:sheet/cols-count :sheet/rows-count]}
 
-     :cell/name       {:db/valueType :db.type/string}
-     :cell/form-str   {:db/valueType :db.type/string}
-     :cell/ret-str    {:db/valueType :db.type/string}
-     :cell/pos        {:db/valueType  :db.type/tuple
-                       :db/tupleAttrs [:cell/x :cell/y]}
-     :cell/refs       {:db/valueType   :db.type/ref
-                       :db/cardinality :db.cardinality/many}
-     :cell/schedule   {:db/valueType   :db.type/ref
-                       :db/cardinality :db.cardinality/one
-                       :db/isComponent true}
-     :cell/evaled-at  {:db/valueType :db.type/instant}
-
-     :schedule/text   {:db/valueType :db.type/string}
-     :schedule/from   {}
-     :schedule/repeat {}
-     :schedule/next   {}}))
+     :cell/name                 {:db/valueType :db.type/string}
+     :cell/form-str             {:db/valueType :db.type/string}
+     :cell/ret-str              {:db/valueType :db.type/string}
+     :cell/pos                  {:db/valueType  :db.type/tuple
+                                 :db/tupleAttrs [:cell/x :cell/y]}
+     :cell/refs                 {:db/valueType   :db.type/ref
+                                 :db/cardinality :db.cardinality/many}
+     :cell/schedule             {:db/valueType   :db.type/ref
+                                 :db/cardinality :db.cardinality/one
+                                 :db/isComponent true}
+     :cell/evaled-at            {:db/valueType :db.type/instant}
+     :cell/eval-upon            {:db/valueType   :db.type/keyword
+                                 :db/cardinality :db.cardinality/many}
+     :schedule/text             {:db/valueType :db.type/string}
+     :schedule/from             {}
+     :schedule/repeat           {}
+     :schedule/next             {}}))
 
 (declare
   entity datoms datoms->entities q where-entity where-entities transact! transact-entity!

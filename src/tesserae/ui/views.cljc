@@ -9,7 +9,7 @@
     [stuffs.keybind :as keybind]
     [tesserae.ui.sheet :as sh :include-macros true]
     [tesserae.ui.panel :as panel :include-macros true]
-    [tesserae.ui.electric-util :as eu]
+    [tesserae.ui.electric-util :as eu :include-macros true]
     [tesserae.ui.typeahead :refer [Typeahead] :include-macros true]
     [tesserae.ui.popup :as popup :include-macros true]
     [tesserae.ui.globals :as g]

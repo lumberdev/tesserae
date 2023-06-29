@@ -38,24 +38,63 @@
                    (when-not (sdom/node=or-contains? dom/node (.-target e))
                      (reset! !open? false))))
         (dom/div
-          (dom/props {:class ["absolute" :p-1 :bg-white :flex :flex-col :gap-1
+          (dom/props {:class ["absolute" :p-1 :bg-white :flex :flex-col
                               :border :border-black :whitespace-pre]})
-          (e/for [{:as x :keys [override
-                                label
-                                label-after-first-click
-                                on-click]} items]
-            (let [[!clicked-once? clicked-once?] (eu/state (if label-after-first-click false true))]
+          (e/for-by (some-fn :label :override)
+            [{:as x :keys [override
+                           label
+                           label-after-first-click
+                           on-click
+                           subitems]} items]
+            (let [[!clicked-once? clicked-once?] (eu/state (if label-after-first-click false true))
+                  [!open-subitems-label open-subitems-label] (eu/state nil)]
               (when x
-                (if override
-                  (new override)
+                (cond
+                  override (new override)
+                  :else
                   (dom/div
-                    (dom/props {:class [:p-1 "hover:bg-slate-200"]})
-                    (dom/on "click" (e/fn [e]
-                                      (if (and label-after-first-click (not clicked-once?))
-                                        (reset! !clicked-once? true)
-                                        (let [ret (new on-click e)]
-                                          (when (boolean? ret)
-                                            (reset! !open? ret))))))
-                    (dom/text (if (and label-after-first-click clicked-once?)
-                                label-after-first-click
-                                label))))))))))))
+                    (dom/props {:class [:p-1 :relative "hover:bg-slate-200"]})
+                    (dom/div
+                      (dom/props {:class [:flex :items-baseline :justify-between]})
+                      (dom/on "click"
+                              (e/fn [e]
+                                (if subitems
+                                  (if (= label open-subitems-label)
+                                    (reset! !open-subitems-label nil)
+                                    (reset! !open-subitems-label label))
+                                  (if (and label-after-first-click (not clicked-once?))
+                                    (reset! !clicked-once? true)
+                                    (let [ret (new on-click e)]
+                                      (when (boolean? ret)
+                                        (reset! !open? ret)))))))
+                      (dom/on "dblclick"
+                              (e/fn [e]
+                                (.stopPropagation e)))
+                      (dom/text (if (and label-after-first-click clicked-once?)
+                                  label-after-first-click
+                                  label))
+                      (when subitems
+                        (new anchor)))
+                    (when (and subitems (= label open-subitems-label))
+                      (dom/div
+                        (dom/props {:class ["absolute" :p-1 :mt-1 :bg-white :flex :flex-col
+                                            :border :border-black :whitespace-pre]})
+                        (e/for [{:as x :keys [label
+                                              checked?
+                                              on-click]} subitems]
+                          (dom/div
+                            (dom/props {:class [:relative :gap-1 :flex "hover:bg-slate-200"]})
+                            (when (contains? x :checked?)
+                              (dom/input
+                                (dom/props {:type    "checkbox"
+                                            :checked (boolean checked?)})))
+                            (dom/on "click"
+                                    (e/fn [e]
+                                      (let [ret (new on-click e)]
+                                        (when (boolean? ret)
+                                          (reset! !open? ret)))))
+                            (dom/on "dblclick"
+                                    (e/fn [e]
+                                      (.stopPropagation e)))
+                            (dom/text label)))
+                        ))))))))))))

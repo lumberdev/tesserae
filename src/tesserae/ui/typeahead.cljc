@@ -54,7 +54,7 @@
                             (e/fn [e]
                               (reset! !show-suggestions? false)
                               (e/server (when on-blur
-                                          (some-> (on-blur. e)
+                                          (some-> (on-blur. nil)
                                                   (handle-updates.)))
                                         nil)))
                     (dom/on "keydown"

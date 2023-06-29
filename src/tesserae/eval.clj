@@ -18,6 +18,7 @@
     [sci.impl.utils :as sci-utils]
     [tesserae.ui.sheet :as-alias ui.sheet]
     [mount.core :as mount :refer [defstate]]
+    [tesserae.eval.vars :as eval.vars]
     [tick.core :as t])
   (:import (missionary Cancelled)))
 
@@ -143,6 +144,7 @@
      true eval-form)))
 
 (def sci-*cell* (sci/new-dynamic-var '*cell*))
+(def sci-*cb-str* (sci/new-dynamic-var '*cb-str*))
 
 (defstate sci-ctx
   :start
@@ -173,12 +175,13 @@
                {'help (constantly
                         {:namespaces
                          (update-vals nss keys)})}
-               (bindings {slurp    `slurp
-                          'eval    eval-form-or-str
-                          'sleep   (fn [ms] (Thread/sleep ms))
-                          'println println
-                          'tap>    tap>
-                          '*cell*  sci-*cell*
+               (bindings {slurp     `slurp
+                          'eval     eval-form-or-str
+                          'sleep    (fn [ms] (Thread/sleep ms))
+                          'println  println
+                          'tap>     tap>
+                          '*cell*   sci-*cell*
+                          '*cb-str* sci-*cb-str*
                           })
                (some-> (mount/args) ::bindings bindings))]
     (sci/init
@@ -214,10 +217,11 @@
   ([form] (eval-form sci-ctx form))
   ([ctx form]
    (sci/with-bindings
-     {sci/out    *out*
-      sci/in     *in*
+     {sci/out      *out*
+      sci/in       *in*
       ;; binding from dynamic clojure land into dynamic sci land
-      sci-*cell* *cell*
+      sci-*cell*   *cell*
+      sci-*cb-str* eval.vars/*cb-str*
       ; sci/ns  @current-ns
       }
      (sci/eval-form ctx form))))
@@ -265,6 +269,7 @@
   (mame/parse-string (str "(do " s ")")
                      {:quote true
                       :deref true
+                      :regex true
                       :fn    true}))
 
 (defn eval-form-str-map [{:as m :keys [form-str]}]
@@ -362,7 +367,7 @@
           )))))
 
 (def default-timeout 2e4)
-;(:sheet/_cells (db/entity 20))
+
 (defn eval-cell-task [{:keys [cell eval-fn timeout]
                        :or   {timeout default-timeout}}]
   {:pre [cell eval-fn]}
@@ -492,6 +497,8 @@
   :stop (eval-schedule-listener))
 
 (comment
+  (mount/stop #'eval-schedule-listener)
+
   (db/transact!
     (map (fn [sched-ent]
            (assoc (tesserae.eval.schedule/parse->schedule (:schedule/text sched-ent) {:zone "America/New_York"})

@@ -1,8 +1,10 @@
 (ns tesserae.ui.electric-util
   (:require [hyperfiddle.electric :as e]
+            [hyperfiddle.electric-dom2 :as dom]
             [missionary.core :as m]
             [stuffs.js-interop :as j]
-            [stuffs.route])
+            [stuffs.route]
+            [stuffs.dom :as sdom])
   #?(:cljs (:require-macros tesserae.ui.electric-util))
   (:import [hyperfiddle.electric Pending]))
 
@@ -19,13 +21,15 @@
   ([dom-node event-name] (listen-and-observe dom-node event-name identity {}))
   ([dom-node event-name handler] (listen-and-observe dom-node event-name handler {}))
   ([dom-node event-name handler options]
-   (m/observe
-     (fn [!]
-       #_(! nil)
-       (let [f (fn [e] (when-some [v (handler e)]
-                         (! v)))]
-         (.addEventListener dom-node (name event-name) f #?(:cljs (clj->js options)))
-         #(.removeEventListener dom-node (name event-name) f))))))
+   (m/relieve
+     {}
+     (m/observe
+       (fn [!]
+         #_(! nil)
+         (let [f (fn [e] (when-some [v (handler e)]
+                           (! v)))]
+           (.addEventListener dom-node (name event-name) f #?(:cljs (clj->js options)))
+           #(.removeEventListener dom-node (name event-name) f)))))))
 
 (defmacro discrete-flow->electric [expr]
   `(->> ~expr
@@ -42,10 +46,24 @@
   ([dom-node event-name handler] `(discrete-flow->electric (listen-and-observe ~dom-node ~event-name ~handler)))
   ([dom-node event-name handler options] `(discrete-flow->electric (listen-and-observe ~dom-node ~event-name ~handler ~options))))
 
-#_(e/def <copy
-    (<on "copy"))
+(e/def <copy
+  (listen-and-observe js/document "copy"))
 
+(e/def <window-focus
+  (listen-and-observe
+    js/window
+    "focus"
+    (fn [e]
+      (when (j/call js/document :hasFocus)
+        e))))
 
+(e/def window-focus
+  (e/client
+    (->> <window-focus
+         (m/reductions {} nil)
+         new)))
+
+;dom/on!
 
 #_(e/def <document-focused?
     #?(:cljs
@@ -53,26 +71,33 @@
                                (j/call js/document :hasFocus)
                                ))))
 
-#_(e/def clipboard+focus
-    ; https://clojurians.slack.com/archives/CL85MBPEF/p1673467726964789
-    #?(:cljs
-       (->>
-         (m/ap
-           (m/?>
-             (m/amb=
-               <copy
-               (m/relieve {}
-                          (m/observe
-                            (fn [!]
-                              (let [handler (fn [e]
-                                              (println :running (j/call js/document :hasFocus))
-                                              (when (j/call js/document :hasFocus)
-                                                (! e)))]
-                                (.addEventListener js/window "focus" handler)
-                                #(.removeEventListener js/window "focus" handler)))))))
-           (m/? (doto (m/dfv) sdom/read-clipboard)))
-         (m/reductions {} "")
-         new)))
+
+(e/def clipboard-on-window-focus
+  ; https://clojurians.slack.com/archives/CL85MBPEF/p1673467726964789
+  (e/client
+    (->>
+      (m/ap
+        (m/?> <window-focus)
+        ;; when clipboard is empty or not of string value
+        ;; emit m/none
+        (or (m/? (doto (m/dfv) sdom/read-clipboard))
+            (m/amb)))
+      (m/reductions {} "")
+      new)))
+
+(e/def clipboard-on-copy-and-window-focus
+  ; https://clojurians.slack.com/archives/CL85MBPEF/p1673467726964789
+  (e/client
+    (->>
+      (m/ap
+        (m/?>
+          (m/amb=
+            <copy
+            <window-focus))
+        (or (m/? (doto (m/dfv) sdom/read-clipboard))
+            (m/amb)))
+      (m/reductions {} "")
+      new)))
 
 (defmacro set-pending [atm & body]
   `(try (do
