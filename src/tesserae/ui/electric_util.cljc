@@ -4,16 +4,18 @@
             [missionary.core :as m]
             [stuffs.js-interop :as j]
             [stuffs.route]
-            [stuffs.dom :as sdom])
+            [stuffs.dom :as sdom]
+            [contrib.missionary-contrib :as mx]
+            [clojure.core :as cc])
   #?(:cljs (:require-macros tesserae.ui.electric-util))
-  (:import [hyperfiddle.electric Pending]))
+  (:import [hyperfiddle.electric Pending]
+           [missionary Cancelled]))
 
 (defmacro state-from-atom [atm]
   `(do [~atm (e/watch ~atm)]))
 
 (defmacro state [val]
   `(let [atm# (atom ~val)] [atm# (e/watch atm#)]))
-
 
 (defmacro wrap [& body] `(e/offload #(do ~@body)))
 
@@ -63,14 +65,17 @@
          (m/reductions {} nil)
          new)))
 
-;dom/on!
+(e/def <document-focused?
+  (mx/mix
+    (listen-and-observe js/window "focus" #(j/call js/document :hasFocus))
+    (listen-and-observe js/window "blur" #(j/call js/document :hasFocus))))
 
-#_(e/def <document-focused?
-    #?(:cljs
-       (<on js/window :focus (fn [e]
-                               (j/call js/document :hasFocus)
-                               ))))
-
+(e/def document-focused?
+  (e/client
+    (->> <document-focused?
+         (m/reductions {} (j/call js/document :hasFocus))
+         (m/relieve {})
+         new)))
 
 (e/def clipboard-on-window-focus
   ; https://clojurians.slack.com/archives/CL85MBPEF/p1673467726964789

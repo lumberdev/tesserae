@@ -283,7 +283,7 @@
 (e/defn CellEvalUpon [{:keys [db/id cell/eval-upon]}]
   (e/for [eval-trigger eval-upon]
     (case eval-trigger
-      :ui/window-focus (when eu/window-focus
+      :ui/window-focus (when eu/document-focused?
                          (e/server
                            (new eval-tx-cell! {:cell (db/entity id)})
                            false)))))
