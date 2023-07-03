@@ -7,9 +7,29 @@ Currently, it's a spreadsheet where cells:
 1. run user Clojure code async and in parallel
 2. reactively re-run when upstream cells update
 3. can run on schedule (e.g. "every 5 seconds")
-4. can render hiccup and other UI elements like buttons etc.
+4. can render hiccup, VegaLite and other UI elements like buttons etc.
+
+
+## Status
+
+In active development and used every day in production at [Lumber](https://lumber.dev/).
+Tesserae acts as a dashboard to provide overviews over employee utilization, project hours and finances.
+It also acts as a slack notifier sending daily project summaries to employees.
+
+That said, the current code is sparsely documented.
 
 ## Demo
+
+A few incompatible changes have landed since the demo code has been pushed.
+These are minor changes overall but we're not currently focused on maintaining demo data.   
+An earlier commit should work and provide a similar experience to master.
+
+Try this in your deps.edn and follow the steps below: 
+
+```clojure
+lumberdev/tesserae {:git/url "https://github.com/lumberdev/tesserae"
+                    :sha     "fcfabb928a44ba72b56c091725c3b564614eca91"}
+```
 
 Run
 ```clojure
