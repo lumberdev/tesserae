@@ -11,7 +11,7 @@
 (def task-grammar
   "<expr> = perms
   <perms> = ((rord? tatin?) | (tatin? ?rord))
-  <rord> = repeat | day
+  <rord> = repeat month-day? | day
   <tatin> = time-at | time-in
   <word> = #'\\w+'
   repeat = (<'every'> (period | day | day-range)) | period-interval
@@ -34,6 +34,7 @@
   am-pm = 'a' | 'am' |'p'| 'pm'
   day-hour = #'[0-9]' | #'[0-1][0-9]' | #'2[0-4]'
   day-hour-minutes = #'[0-9]' | #'[0-5][0-9]'
+  month-day = <'on'? 'the'?>? (#'[0-9]' | #'[1-2][0-9]' | '30' | '31') <'st' | 'th'>?
   "
   )
 
@@ -72,6 +73,8 @@
     t/WEDNESDAY
     t/THURSDAY
     t/FRIDAY})
+
+(declare parsed-with-month-day)
 
 (defn parse [s & {:keys [default-time-at zone]
                   :or   {default-time-at (t/new-time 12 0)
@@ -116,6 +119,8 @@
                                            "weekly" (t/new-period 1 :weeks)
                                            "monthly" (t/new-period 1 :months)
                                            "yearly" (t/new-period 1 :years))))
+
+             :month-day        (tagged :month-day su/parse-int)
              :am-pm            (tagged :am-pm
                                        (fn [s]
                                          (case s
@@ -142,7 +147,8 @@
                                                        (t/today))]
                                            (t/in (t/at d t) zone))))})
           (merge-transform-results {:text    s
-                                    :time-at (t/in (t/date-time) zone)})))
+                                    :time-at (t/in (t/date-time) zone)})
+          parsed-with-month-day))
       (catch #?(:clj Throwable :cljs js/Error) e
         (assoc {:parse-tree p}
           :errored? true
@@ -197,6 +203,10 @@
 (defn next-matching-day [day-set]
   (su/ffilter #(contains? day-set (t/day-of-week %)) (days-seq)))
 
+(defn next-month-day [start month-day]
+  {:pre [(>= 31 month-day 1)]}
+  (su/ffilter #(= month-day (t/day-of-month %)) (days-seq start)))
+
 (defn next-weekday []
   (next-matching-day weekdays))
 
@@ -214,7 +224,15 @@
                                   :period (next-time (or next from) zd v)
                                   (:day :days) (next-time-of-days (or next from) v)))))))
 
-(defn parsed->schedule [{:as m :keys [text time-at repeat time-in errored? day]}]
+(defn parsed-with-month-day
+  [{:as m :keys [text time-at repeat time-in errored? day month-day]}]
+  (cond-> m
+    (and month-day
+         (when-let [[tag period] repeat]
+           (and (= :period tag)
+                (= 1 (t/months period))))) (assoc :time-at (next-month-day time-at month-day))))
+
+(defn parsed->schedule [{:as m :keys [text time-at repeat time-in errored? day month-day]}]
   (when (and m (not errored?))
     (let [base #:schedule{:text text
                           :from time-at}]
@@ -245,6 +263,7 @@
   (parse "weds at 12pm")
   (parse->schedule "weds at 12pm" {})
   (parse "every hour")
+  (parse->schedule "every hour" {})
   (parse "every 5s")
   (parse "in 5m")
   (parse "in 2 min" {:zone "America/New_York"})
@@ -256,8 +275,14 @@
   (parse->schedule "every 2s" {:zone "America/New_York"})
   (parse "every weekday" {:zone "America/New_York"})
   (parse->schedule "every weekday at 6pm" {:zone "America/New_York"})
+  (parse->schedule "every month on the 13th at 6pm" {:zone "America/New_York"})
   (task-parser "every fri at 6pm")
   (parse "every fri at 6pm" {:zone "America/New_York"})
   (parse->schedule "every fri at 6pm" {:zone "America/New_York"})
   (parse->schedule "every 5 months" {:zone "America/Los_Angeles"})
+  (parse->schedule "every fri on the 12th at 6pm" {:zone "America/New_York"})
+  (parse "monthly on the 1st" {})
+  (parse->schedule "monthly" {})
+  (parse->schedule "monthly on the 1st" {})
+  (parse->schedule "monthly on the 15th" {})
   )
