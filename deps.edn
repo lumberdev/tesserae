@@ -14,7 +14,9 @@
          metosin/reitit                 {:mvn/version "0.5.18"}
 
 
-         com.hyperfiddle/electric       {:mvn/version "v2-alpha-263-g89da9d11"}
+         com.hyperfiddle/electric       {:mvn/version "v2-alpha-428-g22937f75"}
+         missionary/missionary          {:mvn/version "b.31"}
+
          info.sunng/ring-jetty9-adapter {:mvn/version "0.14.3"
                                          :exclusions  [org.slf4j/slf4j-api
                                                        info.sunng/ring-jetty9-adapter-http3]}
@@ -23,9 +25,7 @@
          borkdude/sci                   {:mvn/version "0.2.7"}
          instaparse/instaparse          {:mvn/version "1.4.12"}
          ;borkdude/edamame {:mvn/version }
-         datalevin/datalevin            {:mvn/version "0.8.12"
-                                         #_#_#_#_:git/url "https://github.com/juji-io/datalevin"
-                                                 :sha "885c66a0e7045dbcaff470121fa93bb9ba871027"}
+         datalevin/datalevin            {:mvn/version "0.8.19"}
          }
  :aliases
  {:prod {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
@@ -36,7 +36,7 @@
          :extra-paths   ["dev"]
          :override-deps {stuffs/stuffs {:local/root "../../clojure/stuffs"}}
          :extra-deps    {org.clojure/clojurescript {:mvn/version "1.11.60"}
-                         thheller/shadow-cljs      {:mvn/version "2.20.20"}
+                         thheller/shadow-cljs      {:mvn/version "2.25.3"}
                          binaryage/devtools        {:mvn/version "1.0.6"}}
          }
   :demo {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
@@ -49,6 +49,6 @@
    :jvm-opts   ["-Xss3m"]}
   :dev/cljs
   {:extra-deps
-   {thheller/shadow-cljs {:mvn/version "2.20.20"}
+   {thheller/shadow-cljs {:mvn/version "2.25.3"}
     binaryage/devtools   {:mvn/version "1.0.6"}}
    :jvm-opts ["-Xss3m"]}}}
