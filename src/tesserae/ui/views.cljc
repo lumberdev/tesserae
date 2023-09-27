@@ -178,11 +178,11 @@
                                             :panel :sheet
                                             :sheet :panel)]
                                  {:label    (str "show as " (name oppo))
-                                  :on-click (e/fn []
+                                  :on-click (e/fn [_]
                                               (route/push-state oppo {:id eid}))})
                                {:label                   "delete"
                                 :label-after-first-click "are you sure?"
-                                :on-click                (e/fn []
+                                :on-click                (e/fn [_]
                                                            (e/server
                                                              (db/transact! [[:db/retractEntity eid]]) nil)
                                                            (e/client
@@ -250,6 +250,10 @@
   ([] (setvl nil))
   ([x]
    (reset! dbg-vl (some-> x su/write-json-string)) :done))
+
+(defn cleardbg []
+  (sethtml nil)
+  (setvl nil))
 
 (e/defn AtomPre [label a]
   (let [v  (e/watch a)

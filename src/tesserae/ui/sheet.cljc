@@ -88,8 +88,7 @@
                                       (fn [cell]
                                         (binding
                                           [eval.vars/*cb-str* cb-str]
-                                          (eval-f cell)))
-                                      )))))]
+                                          (eval-f cell))))))))]
         (db/transact! [result]
                       {:transacted-by ::cell}))
       true)))

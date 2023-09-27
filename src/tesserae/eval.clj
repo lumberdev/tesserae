@@ -331,7 +331,7 @@
 
 (defn fmt-eval-cell [{:as cell :cell/keys [form-str]}]
   (if (str/blank? form-str)
-    (dissoc cell :cell/form-str)
+    (dissoc cell :cell/form-str :cell/ret-pending?)
     (let [{:as fmt-cell :cell/keys [exception?]} (fmt-cell-formstr cell)]
       (if exception?
         fmt-cell
