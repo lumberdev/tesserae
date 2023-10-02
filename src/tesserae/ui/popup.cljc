@@ -2,7 +2,6 @@
   (:require [hyperfiddle.electric :as e]
             [hyperfiddle.electric-dom2 :as dom]
             [stuffs.dom :as sdom]
-            [missionary.core :as m]
             [tesserae.ui.electric-util :as eu]))
 
 (e/defn TriangleAnchor [{:keys [css-class css-style]
