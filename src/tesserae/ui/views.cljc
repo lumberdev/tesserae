@@ -4,6 +4,7 @@
     [hyperfiddle.electric-dom2 :as dom]
     [clojure.string :as str]
     [missionary.core :as m]
+    [stuffs.dom :as sdom]
     [stuffs.js-interop :as j]
     [spyscope.core]
     [stuffs.keybind :as keybind]
@@ -115,7 +116,9 @@
                   (dom/props {:class [:cursor-pointer "hover:bg-slate-100"]})
                   (dom/on "mousedown"
                           (e/fn [_]
-                            (route/push-state :panel {:id id})))
+                            (route/push-state
+                              (if sdom/mobile-device? :panel :sheet)
+                              {:id id})))
                   (dom/text name))))))))))
 
 (e/defn Nav []
@@ -203,7 +206,9 @@
                                                            {:input-value ""}))))
               :on-pick                     (e/fn [{:keys [picked]}]
                                              (e/client
-                                               (route/push-state :sheet {:id (e/server (:db/id picked))})
+                                               (route/push-state
+                                                 (if sdom/mobile-device? :panel :sheet)
+                                                 {:id (e/server (:db/id picked))})
                                                {:input-value ""}))
               :on-blur                     (e/fn [_]
                                              {:input-value ""})
