@@ -455,7 +455,7 @@
                                                                    (take 3))
                                                              (case tag
                                                                (:day :days) (eval.sched/next-matching-days time-at v)
-                                                               :period (eval.sched/next-times time-at v)))]
+                                                               :period (eval.sched/future-times time-at v)))]
                                              (dom/text "Next 3 runs:")
                                              (dom/div
                                                (dom/props {:class [:pl-3]})

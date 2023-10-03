@@ -34,7 +34,7 @@
   am-pm = 'a' | 'am' |'p'| 'pm'
   day-hour = #'[0-9]' | #'[0-1][0-9]' | #'2[0-4]'
   day-hour-minutes = #'[0-9]' | #'[0-5][0-9]'
-  month-day = <'on'? 'the'?>? (#'[0-9]' | #'[1-2][0-9]' | '30' | '31') <'st' | 'th'>?
+  month-day = <'on'? 'the'?>? (#'[0-9]' | #'[1-2][0-9]' | '30' | '31') <'st' | 'nd' | 'th'>?
   "
   )
 
@@ -194,6 +194,9 @@
 (defn future? [d]
   (t/> d (t/now)))
 
+(defn future-times [start-t interval]
+  (filter future? (iterate #(t/>> % interval) start-t)))
+
 (defn next-matching-days [start days]
   (let [day-set (su/ensure-set days)]
     (filter #(and (contains? day-set (t/day-of-week %))
@@ -284,5 +287,6 @@
   (parse "monthly on the 1st" {})
   (parse->schedule "monthly" {})
   (parse->schedule "monthly on the 1st" {})
+  (parse->schedule "monthly on the 2nd" {})
   (parse->schedule "monthly on the 15th" {})
   )
