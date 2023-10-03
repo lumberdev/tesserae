@@ -367,12 +367,16 @@
                                 (if (= dom/node (j/get js/document :activeElement))
                                   (.preventDefault e)
                                   (let [s (-> (j/get-in e [:target :value]) str/trim)]
-                                    (e/server
-                                      (let [txr (new eval-tx-cell! {:cell    (assoc cell-ent :cell/form-str s)
-                                                                    :eval-fn eval/fmt-eval-cell})]
-                                        (when txr
-                                          (e/client (reset! !editor-cell-pos nil))))
-                                      nil)))))))
+                                    ;; only run when code changed
+                                    (if (= s form-str)
+                                      (reset! !editor-cell-pos nil)
+                                      (e/server
+                                        (let [txr (new eval-tx-cell!
+                                                       {:cell    (assoc cell-ent :cell/form-str s)
+                                                        :eval-fn eval/fmt-eval-cell})]
+                                          (when txr
+                                            (e/client (reset! !editor-cell-pos nil))))
+                                        nil))))))))
                   (dom/div
                     (dom/props {:class ["gap-1" "flex" "justify-between" :p-1 :h-6]
                                 :style {:min-width "4rem"}})
