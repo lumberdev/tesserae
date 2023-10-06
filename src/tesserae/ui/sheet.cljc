@@ -8,6 +8,7 @@
     [stuffs.keybind :as keybind]
     [spyscope.core]
     [missionary.core :as m]
+    [stuffs.route :as route]
     [tesserae.ui.globals :as g]
     [tesserae.eval.schedule :as eval.sched]
     [stuffs.env :as env]
@@ -248,6 +249,12 @@
                                   (e/server
                                     (new eval-tx-cell! {:cell cell-ent})
                                     false))}
+                     {:label    "open"
+                      :on-click (e/fn [_]
+                                  (route/push-state
+                                    :cell
+                                    {:id id})
+                                  true)}
                      {:label    (str (if schedule? "change" "add") " schedule")
                       :on-click (e/fn [_]
                                   (e/server

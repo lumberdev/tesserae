@@ -19,7 +19,9 @@
       ["/sheet/:id" {:name       :sheet
                      :parameters {:path {:id int?}}}]
       ["/panel/:id" {:name       :panel
-                     :parameters {:path {:id int?}}}]]]
+                     :parameters {:path {:id int?}}}]
+      ["/cell/:id" {:name       :cell
+                    :parameters {:path {:id int?}}}]]]
     {:compile rc/compile-request-coercers
      :data    {:coercion rss/coercion}}))
 

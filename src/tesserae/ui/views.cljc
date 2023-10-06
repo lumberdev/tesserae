@@ -8,6 +8,7 @@
     [stuffs.js-interop :as j]
     [spyscope.core]
     [stuffs.keybind :as keybind]
+    [tesserae.ui.sheet :as sheet]
     [tesserae.ui.sheet :as sh :include-macros true]
     [tesserae.ui.panel :as panel :include-macros true]
     [tesserae.ui.electric-util :as eu :include-macros true]
@@ -230,13 +231,18 @@
       (dom/props {:style {:height "calc(100vh - 30px)"}})
       (case g/route
         :home (new Recents)
-        (:sheet :panel) (let [id (-> g/route-match :parameters :path :id)]
-                          (e/server
-                            (let [<ent (sdu/entity g/db id)]
-                              (e/client
-                                (case g/route
-                                  :sheet (e/server (new sh/Entrypoint <ent))
-                                  :panel (e/server (new panel/Entrypoint <ent)))))))
+
+        (:sheet :pane :cell)
+        (let [id (-> g/route-match :parameters :path :id)]
+          (dom/div
+            (dom/props {:class [:flex :justify-center :p-1]})
+            (e/server
+              (let [<ent (sdu/entity g/db id)]
+                (e/client
+                  (case g/route
+                    :sheet (e/server (new sh/Entrypoint <ent))
+                    :panel (e/server (new panel/Entrypoint <ent))
+                    :cell (e/server (new sheet/EditableCell <ent))))))))
 
         (dom/div
           (dom/props {:class [:text-2xl]})
