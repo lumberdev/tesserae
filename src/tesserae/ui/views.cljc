@@ -234,15 +234,15 @@
 
         (:sheet :pane :cell)
         (let [id (-> g/route-match :parameters :path :id)]
-          (dom/div
-            (dom/props {:class [:flex :justify-center :p-1]})
-            (e/server
-              (let [<ent (sdu/entity g/db id)]
-                (e/client
-                  (case g/route
-                    :sheet (e/server (new sh/Entrypoint <ent))
-                    :panel (e/server (new panel/Entrypoint <ent))
-                    :cell (e/server (new sheet/EditableCell <ent))))))))
+          (e/server
+            (let [<ent (sdu/entity g/db id)]
+              (e/client
+                (case g/route
+                  :sheet (e/server (new sh/Entrypoint <ent))
+                  :panel (e/server (new panel/Entrypoint <ent))
+                  :cell (dom/div
+                          (dom/props {:class [:flex :justify-center :p-1]})
+                          (e/server (new sheet/EditableCell <ent))))))))
 
         (dom/div
           (dom/props {:class [:text-2xl]})
