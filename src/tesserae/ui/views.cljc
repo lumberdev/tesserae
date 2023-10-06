@@ -241,7 +241,7 @@
                   :sheet (e/server (new sh/Entrypoint <ent))
                   :panel (e/server (new panel/Entrypoint <ent))
                   :cell (dom/div
-                          (dom/props {:class [:flex :justify-center :p-1]})
+                          (dom/props {:class [:flex :justify-center :p-2 :overflow-auto]})
                           (e/server (new sheet/EditableCell <ent))))))))
 
         (dom/div
