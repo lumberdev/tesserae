@@ -232,7 +232,7 @@
       (case g/route
         :home (new Recents)
 
-        (:sheet :pane :cell)
+        (:sheet :panel :cell)
         (let [id (-> g/route-match :parameters :path :id)]
           (e/server
             (let [<ent (sdu/entity g/db id)]
