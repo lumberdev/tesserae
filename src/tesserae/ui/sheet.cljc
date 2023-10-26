@@ -16,6 +16,7 @@
     [tesserae.ui.electric-util :as eu :include-macros true]
     [tesserae.ui.vega :as ui.vega :include-macros true]
     [tesserae.ui.popup :as popup :include-macros true]
+    [tesserae.ui.notif :as ui.notif :include-macros true]
     [kitchen-async.promise :as p]
     [net.cgrand.xforms :as x]
     [stuffs.js-interop :as j]
@@ -225,7 +226,7 @@
           #(j/apply cl :remove (into-array remove-css-classes))
           2000)))))
 
-(e/defn CellAnchorMenu [{:as <cell-ent :keys [db/id] :cell/keys [evaled-at eval-upon schedule ret]}
+(e/defn CellAnchorMenu [{:as <cell-ent :keys [db/id] :cell/keys [evaled-at eval-upon notify-on-ret schedule ret]}
                         {:keys [set-edit-schedule]}]
   (let [cell-ent  (or (db/entity id) <cell-ent)
         schedule? (boolean schedule)
@@ -284,6 +285,30 @@
                                                       id :cell/eval-upon :ui/window-focus]])
                                                   nil)
                                                 true)})]}
+
+
+                     (e/client
+                       {:label    "notify"
+                        :subitems [(e/client
+                                     (let [checked? (e/server
+                                                      (boolean
+                                                        (su/ffilter
+                                                          #(= (:db/id %) g/user-eid)
+                                                          notify-on-ret)))]
+                                       {:label    "me"
+                                        :checked? checked?
+                                        :on-click (e/fn [_]
+                                                    (when-not checked?
+                                                      (ui.notif/install-if-needed))
+                                                    (e/server
+                                                      (db/transact!
+                                                        [[(if checked?
+                                                            :db/retract
+                                                            :db/add)
+                                                          id :cell/notify-on-ret g/user-eid]])
+                                                      nil)
+                                                    true)}))]})
+
                      ]}))))
 
 (e/defn CellEvalUpon [{:keys [db/id cell/eval-upon]}]

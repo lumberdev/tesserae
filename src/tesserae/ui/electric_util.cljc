@@ -126,3 +126,13 @@
                              #(remove-watch !x !)))))
         (m/? (m/via m/cpu !x))))))
 
+(defn await-promise "Returns a task completing with the result of given promise"
+  [p]
+  (let [v (m/dfv)]                                          ; dataflow "atom"
+    (.then p
+           #(v (fn [] %))                                   ; wrap result in closure and put closure in atom
+           #(v (fn [] (throw %))))                          ; delayed throw
+    (m/absolve v)))
+
+(defmacro <await-promise [p]
+  `(new (e/task->cp (await-promise ~p))))

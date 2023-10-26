@@ -16,6 +16,7 @@
     [tesserae.ui.popup :as popup :include-macros true]
     [tesserae.ui.globals :as g]
     [tesserae.ui.vega :as ui.vega]
+    [tesserae.ui.notif :as notif :include-macros true]
     [stuffs.route :as route]
     [stuffs.util :as su]
     [tesserae.serialize]
@@ -100,6 +101,8 @@
         )
       ))
 
+
+
 (e/defn Recents []
   (e/client
     (dom/div
@@ -120,7 +123,11 @@
                             (route/push-state
                               (if sdom/mobile-device? :panel :sheet)
                               {:id id})))
-                  (dom/text name))))))))))
+                  (dom/text name)))))))
+      (dom/div
+        (dom/props {:class [:text-center :text-xl :font-bold :pt-5]})
+        (dom/text "Settings"))
+      (new notif/Toggle))))
 
 (e/defn Nav []
   (e/client
@@ -298,6 +305,8 @@
     (dom/div
       (dom/props {:class [:flex :flex-col :w-100vw :h-100vh :overflow-hidden]})
       (e/server
-        (binding [g/db (new (eu/async-watch db/conn))]
+        (binding [g/db (new (eu/async-watch db/conn))
+                  g/user-ent  db/*user-ent*
+                  g/user-eid (:db/id db/*user-ent*)]
           (new Nav)
           (new Route))))))

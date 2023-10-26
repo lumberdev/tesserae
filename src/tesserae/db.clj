@@ -1,12 +1,16 @@
 (ns tesserae.db
   (:require [mount.core :as mount :refer [defstate]]
+            [missionary.core :as m]
             [medley.core :as md]
             [datalevin.core :as d]
             [stuffs.datalevin.util :as sdu]
             [stuffs.env :as env]
             [stuffs.util :as su]
             [stuffs.mount :as smount]
-            [datalevin.search-utils :as dsu]))
+            [datalevin.search-utils :as dsu]
+            [tick.core :as t]))
+
+(def ^:dynamic *user-ent* nil)
 
 (defn db-dir []
   (or (::dir (mount/args)) "data/tesserae/datalevin/db"))
@@ -16,7 +20,21 @@
     (when env/dev?
       {:dev-id {:db/valueType :db.type/string
                 :db/unique    :db.unique/identity}})
-    {:sheet/name                {:db/valueType :db.type/string}
+    {:user/email                {:db/valueType :db.type/string
+                                 :db/unique    :db.unique/identity}
+     :user/oauth2-token         {:db/valueType :db.type/string
+                                 :db/unique    :db.unique/identity}
+     :user/oauth2-refresh-token {:db/valueType :db.type/string
+                                 :db/unique    :db.unique/identity}
+     :user/oauth2-token-expires {:db/valueType :db.type/instant}
+
+     :user/web-push-subs        {:db/valueType   :db.type/ref
+                                 :db/cardinality :db.cardinality/many}
+     :web-push-sub/auth         {:db/valueType :db.type/string}
+     :web-push-sub/p256dh       {:db/valueType :db.type/string}
+     :web-push-sub/endpoint     {:db/valueType :db.type/string}
+
+     :sheet/name                {:db/valueType :db.type/string}
      :sheet/cells               {:db/valueType   :db.type/ref
                                  :db/cardinality :db.cardinality/many
                                  :db/isComponent true}
@@ -36,10 +54,15 @@
      :cell/evaled-at            {:db/valueType :db.type/instant}
      :cell/eval-upon            {:db/valueType   :db.type/keyword
                                  :db/cardinality :db.cardinality/many}
+     :cell/notify-on-ret        {:db/valueType   :db.type/ref
+                                 :db/cardinality :db.cardinality/many}
+
      :schedule/text             {:db/valueType :db.type/string}
      :schedule/from             {}
      :schedule/repeat           {}
      :schedule/next             {}}))
+
+
 
 (declare
   entity datoms datoms->entities q where-entity where-entities transact! transact-entity!

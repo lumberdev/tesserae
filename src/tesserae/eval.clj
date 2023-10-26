@@ -19,6 +19,7 @@
     [tesserae.ui.sheet :as-alias ui.sheet]
     [mount.core :as mount :refer [defstate]]
     [tesserae.eval.vars :as eval.vars]
+    [tesserae.push-notif :as push-notif]
     [tick.core :as t])
   (:import (missionary Cancelled)))
 
@@ -496,6 +497,74 @@
     cancel)
   :stop (eval-schedule-listener))
 
+(def tx-report->new-ret-cell-entity-xf
+  (comp
+    (filter (fn [{:keys [tx-data db-after tx-meta] :as report}]
+              (not-empty tx-data)))
+    (mapcat (fn [{:as m :keys [db-after tx-data]}]
+              (let [m (dissoc m :tx-data)]
+                (map #(assoc m :datom %) tx-data))))
+    (filter (fn [{{:keys [a added]} :datom}]
+              (and added (or
+                           (= a :cell/ret)
+                           (= a :cell/ret-str)))))
+    (map (fn [{{:keys [e]} :datom
+               :keys       [db-after]}]
+           (d/entity db-after e)))
+    (distinct)))
+
+(defstate cell-notifs-listener
+  :start (let [transact-one! (fn [tx]
+                               (d/transact!
+                                 db/conn
+                                 [tx]
+                                 {:transacted-by ::notifs-listener}))
+               >cells        (->> (db-observe-flow db/conn ::notifs-listener)
+                                  (m/eduction
+                                    (filter (fn [{:keys [tx-data db-after tx-meta] :as report}]
+                                              ;; todo could also add ignore for  meta here
+                                              (and (not-empty tx-data)
+                                                   (contains?
+                                                     #{::schedule-listener}
+                                                     (:transacted-by tx-meta)))))
+                                    tx-report->new-ret-cell-entity-xf
+                                    ))
+               <notify       (m/ap
+                               (let [cell (m/?> ##Inf >cells)]
+                                 ;(tap> cell)
+                                 (when-let [notify-users (:cell/notify-on-ret cell)]
+                                   (let [sub  (->> (m/seed notify-users)
+                                                   (m/eduction (mapcat :user/web-push-subs))
+                                                   (m/?> ##Inf))
+                                         #_(tap> sub)
+                                         resp (m/?
+                                                (m/via m/blk
+                                                       #_(println :SENDING-NOTIF)
+                                                       (push-notif/send!
+                                                         sub
+                                                         {:title (str
+                                                                   "Cell: "
+                                                                   (or (:cell/name cell)
+                                                                       (:db/id cell))
+                                                                   " updated")
+                                                          :body  (:cell/ret-str cell)})))]
+                                     (if (tesserae.push-notif/sub-gone? resp)
+                                       (transact-one! [:db/retractEntity (:db/id sub)])
+                                       [:notified sub]
+                                       )))
+                                 ))
+               task          (m/reduce (fn [_ x]
+                                         #_(when x (println :x x)))
+                                       nil
+                                       <notify)
+               cancel        (task #(println :success %)
+                                   #(println :fail %))]
+           cancel)
+  :stop (cell-notifs-listener))
+
+;(mount/start)
+
+
 (comment
   (mount/stop #'eval-schedule-listener)
 
@@ -509,7 +578,6 @@
 (comment
   (db/transact! (map (fn [x] [:db/retractEntity (:db/id x)]) (remove :cell/_schedule (db/datoms->entities :ave :schedule/text)))))
 
-
 (defstate db-eval-refs-listener
   :start (let [transact-cell! (fn [c]
                                 (d/transact!
@@ -518,19 +586,7 @@
                                   {:transacted-by ::refs-listener}))
                >cells         (->> (db-observe-flow db/conn ::refs-listener)
                                    (m/eduction
-                                     (filter (fn [{:keys [tx-data db-after tx-meta] :as report}]
-                                               (not-empty tx-data)))
-                                     (mapcat (fn [{:as m :keys [db-after tx-data]}]
-                                               (let [m (dissoc m :tx-data)]
-                                                 (map #(assoc m :datom %) tx-data))))
-                                     (filter (fn [{{:keys [a added]} :datom}]
-                                               (and added (or
-                                                            (= a :cell/ret)
-                                                            (= a :cell/ret-str)))))
-                                     (map (fn [{{:keys [e]} :datom
-                                                :keys       [db-after]}]
-                                            (d/entity db-after e)))
-                                     (distinct)
+                                     tx-report->new-ret-cell-entity-xf
                                      (mapcat :cell/_refs)))
                eval-by-id     (m/ap
                                 (let [cell (m/?> ##Inf >cells)]

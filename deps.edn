@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure            {:mvn/version "1.11.1"}
          stuffs/stuffs                  {:git/url "https://github.com/den1k/stuffs"
-                                         :sha     "5e3d7acf2da17ddc762c3adf460f7da9fdac0d39"}
+                                         :sha     "13dfab50c6f896c4dad438d9b346db84238eac9d"}
 
          http-kit/http-kit              {:mvn/version "2.6.0"}
          ring/ring-core                 {:mvn/version "1.9.6"}
@@ -26,6 +26,7 @@
          instaparse/instaparse          {:mvn/version "1.4.12"}
          ;borkdude/edamame {:mvn/version }
          datalevin/datalevin            {:mvn/version "0.8.19"}
+         webpush/webpush                {:mvn/version "0.1.0-SNAPSHOT"}
          }
  :aliases
  {:prod {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
