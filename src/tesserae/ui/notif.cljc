@@ -1,7 +1,7 @@
 (ns tesserae.ui.notif
   (:require [clojure.string :as str]
             [hyperfiddle.electric :as e]
-            [stuffs.env :as env]
+            [stuffs.env :as env :include-macros true]
             [stuffs.util :as su]
             [tesserae.ui.electric-util :as eu]
             [hyperfiddle.electric-dom2 :as dom]
@@ -48,10 +48,14 @@
               (str/includes? scriptURL sw-path)))
          regs))))
 
-#?(:cljs (defn existing-subscription [sw-path]
-           (p/let [matching (existing-registration sw-path)]
-             (when matching
-               (j/call-in matching [:pushManager :getSubscription])))))
+#?(:cljs
+   (defn existing-subscription [sw-path]
+     (p/let [matching (existing-registration sw-path)]
+       (when matching
+         (j/call-in matching [:pushManager :getSubscription])))))
+
+(def server-public-key
+  (env/get :web-push-public-key))
 
 #?(:cljs
    (defn install-worker [sw-path]
@@ -59,14 +63,18 @@
                (when (= "activated" st)
                  (p/let [pm           (j/get reg :pushManager)
                          #_(js/console.log "pm " pm)
+                         #_(js/console.log "server key" (env/get :web-push-public-key))
+                         #_(js/console.log "server base64 key" server-public-key)
                          subscription (j/call pm :subscribe
                                               #js {:userVisibleOnly
                                                    true
                                                    :applicationServerKey
-                                                   (goog.crypt.base64/decodeStringToUint8Array
-                                                     (env/get :web-push-public-key)
-                                                     #_"BLw7yyZN9FCSJJStBrKoLCxjX8D1DyPdQmMwIIKH8x47TaVLqqYBGlr8rpqRxme762alU3c-ojHug8tFki61f5E=")})
-                         {:keys [status body]} (fetch/post "/app/notif/sub" {:body subscription})]
+                                                   (goog.crypt.base64/decodeStringToUint8Array server-public-key)})
+                         #_            (js/console.log "sub" subscription)
+                         {:keys [status body]} (fetch/post "/app/notif/sub"
+                                                           {:content-type :json
+                                                            :accept       :json
+                                                            :body         subscription})]
                    (case status
                      200 (new-notif! {:title "Yield"
                                       :body  "Notifications Enabled"})
