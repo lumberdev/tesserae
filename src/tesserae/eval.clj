@@ -522,8 +522,8 @@
                >cells        (->> (db-observe-flow db/conn ::notifs-listener)
                                   (m/eduction
                                     (filter (fn [{:keys [tx-data db-after tx-meta] :as report}]
-                                              ;; todo could also add ignore for  meta here
                                               (and (not-empty tx-data)
+                                                   ;; listen only to scheduled executions
                                                    (contains?
                                                      #{::schedule-listener}
                                                      (:transacted-by tx-meta)))))
@@ -542,12 +542,7 @@
                                                        #_(println :SENDING-NOTIF)
                                                        (push-notif/send!
                                                          sub
-                                                         {:title (str
-                                                                   "Cell: "
-                                                                   (or (:cell/name cell)
-                                                                       (:db/id cell))
-                                                                   " updated")
-                                                          :body  (:cell/ret-str cell)})))]
+                                                         (push-notif/cell->notif-m cell))))]
                                      (if (tesserae.push-notif/sub-gone? resp)
                                        (transact-one! [:db/retractEntity (:db/id sub)])
                                        [:notified sub]

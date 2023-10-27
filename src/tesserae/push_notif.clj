@@ -17,9 +17,9 @@
   :start (do
            (wp/add-security-provider!)
            (wp/service
-            (env/get :web-push-public-key)
-            (env/get :web-push-private-key)
-            "mailto:dennis@lumber.dev")))
+             (env/get :web-push-public-key)
+             (env/get :web-push-private-key)
+             "mailto:dennis@lumber.dev")))
 
 ;(map :v (db/datoms :ave :user/web-push-subs))
 
@@ -48,13 +48,21 @@
 
 (defn send-to-all! [notif-m]
   (send-to-many! notif-m (db/datoms->entities :ave :web-push-sub/auth)))
-#_#_(sort-by identity > [1 3 4])
-        (map tap> (sort-by :db/created-at > (db/datoms->entities :ave :web-push-sub/auth)))
 
-;(map datalevin.core/touch(db/datoms->entities :ave :web-push-sub/auth))
-;(map :web-push-sub/endpoint  (db/datoms->entities :ave :web-push-sub/auth))
+(comment
+  (def reqs (send-to-all! {:title "yssaa me"
+                           :body  "hey"})))
+
+(defn cell->notif-m [{:as cell id :db/id :cell/keys [name ret-str]}]
+  {:title (str
+            "Sheet " (-> (db/entity 21) :sheet/_cells :sheet/name)
+            " cell: " (or name id) " updated")
+   :body  ret-str
+   :data  {:routeTo (str "/app/cell/" id)}})
 
 
 (comment
-  (def reqs (send-to-all! {:title      "yssaa me"
-                                 :body "hey"})))
+  #_(datalevin.core/touch (rand-nth (db/datoms->entities :ave :cell/name)))
+  (send-to-all! (cell->notif-m (db/entity 67))))
+
+
