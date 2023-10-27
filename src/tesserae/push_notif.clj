@@ -58,6 +58,7 @@
             (-> (db/entity 21) :sheet/_cells :sheet/name) ": "
             (or name id) " updated")
    :body  ret-str
+   :icon  "/img/yield-icon512.png"
    :data  {:routeTo (str "/app/cell/" id)}})
 
 
