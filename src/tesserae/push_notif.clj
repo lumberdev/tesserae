@@ -55,8 +55,8 @@
 
 (defn cell->notif-m [{:as cell id :db/id :cell/keys [name ret-str]}]
   {:title (str
-            "Sheet " (-> (db/entity 21) :sheet/_cells :sheet/name)
-            " cell: " (or name id) " updated")
+            (-> (db/entity 21) :sheet/_cells :sheet/name) ": "
+            (or name id) " updated")
    :body  ret-str
    :data  {:routeTo (str "/app/cell/" id)}})
 
