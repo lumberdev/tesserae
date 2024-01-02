@@ -10,7 +10,7 @@
    [stuffs.keybind :as keybind]
    [tesserae.ui.sheet :as sh]
    [tesserae.ui.panel :as panel]
-   [tesserae.ui.electric-util]
+   [tesserae.ui.electric-util :as eu]
    [tesserae.ui.typeahead :refer [Typeahead]]
    [tesserae.ui.popup :as popup]
    [tesserae.ui.globals :as g]
