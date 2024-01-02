@@ -13,10 +13,10 @@
    [tesserae.eval.schedule :as eval.sched]
    [stuffs.env :as env]
    [tesserae.ui.render :as uir]
-   [tesserae.ui.electric-util :as eu :include-macros true]
-   [tesserae.ui.vega :as ui.vega :include-macros true]
-   [tesserae.ui.popup :as popup :include-macros true]
-   [tesserae.ui.notif :as ui.notif :include-macros true]
+   [tesserae.ui.electric-util :as eu]
+   [tesserae.ui.vega :as ui.vega]
+   [tesserae.ui.popup :as popup]
+   [tesserae.ui.notif :as ui.notif]
    [kitchen-async.promise :as p]
    [net.cgrand.xforms :as x]
    [stuffs.js-interop :as j]
@@ -27,7 +27,6 @@
               [stuffs.datalevin.util :as sdu]
               [tesserae.eval :as eval]]
        :cljs [[stuffs.dom :as sdom]]))
-  #?(:cljs (:require-macros [tesserae.ui.sheet]))
   (:import [hyperfiddle.electric Pending]))
 
 (e/def active-element
@@ -78,21 +77,23 @@
 (e/defn eval-tx-cell! [{:keys [cell eval-fn timeout] :as opts}]
   (let [cb-str eu/clipboard-on-window-focus]
     (e/server
-     (db/transact! [(assoc cell :cell/ret-pending? true)]
-                   {:transacted-by ::cell})
-     (let [opts   (cond-> opts (nil? eval-fn) (assoc :eval-fn eval/eval-cell))
-           result (new
-                   (e/task->cp
-                    (eval/eval-cell-task
-                     (update
-                      opts
-                      :eval-fn (fn [eval-f]
-                                 (fn [cell]
-                                   (binding
-                                    [eval.vars/*cb-str* cb-str]
-                                     (eval-f cell))))))))]
-       (db/transact! [result]
-                     {:transacted-by ::cell}))
+     (let [tx-fn #(db/transact! % {:transacted-by ::cell})]
+       (or
+        (eval/retract-empty-unnamed-refless-cell! tx-fn cell)
+        ;; FIXME not setting to pending as it causes a weird circular reactive issue 
+        (let [#_(tx-fn [(assoc cell :cell/ret-pending? true)])
+              opts   (cond-> opts (nil? eval-fn) (assoc :eval-fn eval/eval-cell))
+              result  (new
+                       (e/task->cp
+                        (eval/eval-cell-task
+                         (update
+                          opts
+                          :eval-fn (fn [eval-f]
+                                     (fn [cell]
+                                       (binding
+                                        [eval.vars/*cb-str* cb-str]
+                                         (eval-f cell))))))))]
+          (tx-fn [result]))))
      true)))
 
 
@@ -112,22 +113,23 @@
 
 
 (e/defn IncDecButtons [state cb]
-  (dom/div
-   (dom/props {:class ["flex" "border" "border-black" :rounded-sm :m-2]})
-   (dom/button
-    (dom/props {:class ["font-bold" "px-1"]})
-    (dom/on "click" (e/fn [_]
-                      (new cb (dec state))))
-    (dom/on "dblclick"
-            (e/fn [e] (.stopPropagation e)))
-    (dom/text "-"))
-   (dom/text " " state " ")
-   (dom/button
-    (dom/props {:class ["font-bold" "px-1"]})
-    (dom/on "click" (e/fn [_] (new cb (inc state))))
-    (dom/on "dblclick"
-            (e/fn [e] (.stopPropagation e)))
-    (dom/text "+"))))
+  (e/client
+   (dom/div
+    (dom/props {:class ["flex" "border" "border-black" :rounded-sm :m-2]})
+    (dom/button
+     (dom/props {:class ["font-bold" "px-1"]})
+     (dom/on "click" (e/fn [_]
+                       (new cb (dec state))))
+     (dom/on "dblclick"
+             (e/fn [e] (.stopPropagation e)))
+     (dom/text "-"))
+    (dom/text " " state " ")
+    (dom/button
+     (dom/props {:class ["font-bold" "px-1"]})
+     (dom/on "click" (e/fn [_] (new cb (inc state))))
+     (dom/on "dblclick"
+             (e/fn [e] (.stopPropagation e)))
+     (dom/text "+")))))
 
 
 
@@ -224,88 +226,96 @@
          #(j/apply cl :remove (into-array remove-css-classes))
          2000)))))
 
+#_(db/transact! [(assoc (db/entity 29)
+                        :cell/form-str
+                        "{:tesserae.ui.render/as :ui/inc-dec, :tesserae.ui.render/val 2023}")])
+
+#_(-> (db/entity 26)
+      :cell/refs)
+
 (e/defn CellAnchorMenu [{:as <cell-ent :keys [db/id] :cell/keys [evaled-at eval-upon notify-on-ret schedule ret]}
                         {:keys [set-edit-schedule]}]
-  (let [cell-ent  (or (db/entity id) <cell-ent)
-        schedule? (boolean schedule)
-        {shed-text :schedule/text sched-next :schedule/next} schedule]
-    (e/client
-     (new popup/Menu
-          {:anchor (e/fn [] (new popup/TriangleAnchor {}))
-           :items  [{:override
-                     (e/fn []
-                       (dom/div
-                        (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
-                                 (dom/text "id: " id))
-                        (when evaled-at
-                          (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
-                                   (dom/text "last run: " (su/local-date-time-string evaled-at))))
-                        (when sched-next
-                          (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
-                                   (dom/text "next run: " (su/local-date-time-string sched-next))))))}
-                    {:label    "run"
-                     :on-click (e/fn [_]
-                                 (e/server
-                                  (new eval-tx-cell! {:cell cell-ent})
-                                  false))}
-                    {:label    "open"
-                     :on-click (e/fn [_]
-                                 (route/push-state
-                                  :cell
-                                  {:id id})
-                                 true)}
-                    {:label    (str (if schedule? "change" "add") " schedule")
-                     :on-click (e/fn [_]
-                                 (e/server
-                                  (new set-edit-schedule true))
-                                 false)}
-                    {:label    "copy"
-                     :on-click (e/fn [_]
-                                 (some-> ret uir/value str sdom/copy-to-clipboard)
-                                 false)}
-                    {:label                   "delete"
-                     :label-after-first-click "are you sure?"
-                     :on-click                (e/fn [_]
-                                                (e/server
-                                                 (db/transact! [[:db/retractEntity id]])
-                                                 nil)
-                                                false)}
-                    {:label    "run on"
-                     :subitems [(let [checked? (contains? eval-upon :ui/window-focus)]
-                                  {:label    "window focus"
-                                   :checked? checked?
-                                   :on-click (e/fn [_]
-                                               (e/server
-                                                (db/transact!
-                                                 [[(if checked?
-                                                     :db/retract
-                                                     :db/add)
-                                                   id :cell/eval-upon :ui/window-focus]])
-                                                nil)
-                                               true)})]}
-
-
-                    (e/client
-                     {:label    "notify"
-                      :subitems [(e/client
-                                  (let [checked? (e/server
-                                                  (boolean
-                                                   (su/ffilter
-                                                    #(= (:db/id %) g/user-eid)
-                                                    notify-on-ret)))]
-                                    {:label    "me"
-                                     :checked? checked?
-                                     :on-click (e/fn [_]
-                                                 (when-not checked?
-                                                   (ui.notif/install-if-needed))
+  (e/server
+   (let [cell-ent  (or (db/entity id) <cell-ent)
+         schedule? (boolean schedule)
+         {shed-text :schedule/text sched-next :schedule/next} schedule]
+     (e/client
+      (new popup/Menu
+           {:anchor (e/fn [] (new popup/TriangleAnchor {}))
+            :items  [{:override
+                      (e/fn []
+                        (dom/div
+                         (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
+                                  (dom/text "id: " id))
+                         (when evaled-at
+                           (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
+                                    (dom/text "last run: " (su/local-date-time-string evaled-at))))
+                         (when sched-next
+                           (dom/div (dom/props {:class [:p-1 :whitespace-pre]})
+                                    (dom/text "next run: " (su/local-date-time-string sched-next))))))}
+                     {:label    "run"
+                      :on-click (e/fn [_]
+                                  (e/server
+                                   (new eval-tx-cell! {:cell cell-ent})
+                                   false))}
+                     {:label    "open"
+                      :on-click (e/fn [_]
+                                  (route/push-state
+                                   :cell
+                                   {:id id})
+                                  true)}
+                     {:label    (str (if schedule? "change" "add") " schedule")
+                      :on-click (e/fn [_]
+                                  (e/server
+                                   (new set-edit-schedule true))
+                                  false)}
+                     {:label    "copy"
+                      :on-click (e/fn [_]
+                                  (some-> ret uir/value str sdom/copy-to-clipboard)
+                                  false)}
+                     {:label                   "delete"
+                      :label-after-first-click "are you sure?"
+                      :on-click                (e/fn [_]
                                                  (e/server
-                                                  (db/transact!
-                                                   [[(if checked?
-                                                       :db/retract
-                                                       :db/add)
-                                                     id :cell/notify-on-ret g/user-eid]])
+                                                  (db/transact! [[:db/retractEntity id]])
                                                   nil)
-                                                 true)}))]})]}))))
+                                                 false)}
+                     {:label    "run on"
+                      :subitems [(let [checked? (contains? eval-upon :ui/window-focus)]
+                                   {:label    "window focus"
+                                    :checked? checked?
+                                    :on-click (e/fn [_]
+                                                (e/server
+                                                 (db/transact!
+                                                  [[(if checked?
+                                                      :db/retract
+                                                      :db/add)
+                                                    id :cell/eval-upon :ui/window-focus]])
+                                                 nil)
+                                                true)})]}
+
+
+                     (e/client
+                      {:label    "notify"
+                       :subitems [(e/client
+                                   (let [checked? (e/server
+                                                   (boolean
+                                                    (su/ffilter
+                                                     #(= (:db/id %) g/user-eid)
+                                                     notify-on-ret)))]
+                                     {:label    "me"
+                                      :checked? checked?
+                                      :on-click (e/fn [_]
+                                                  (when-not checked?
+                                                    (ui.notif/install-if-needed))
+                                                  (e/server
+                                                   (db/transact!
+                                                    [[(if checked?
+                                                        :db/retract
+                                                        :db/add)
+                                                      id :cell/notify-on-ret g/user-eid]])
+                                                   nil)
+                                                  true)}))]})]})))))
 
 (e/defn CellEvalUpon [{:keys [db/id cell/eval-upon]}]
   (e/for [eval-trigger eval-upon]
@@ -322,7 +332,7 @@
     :sheet/keys [_cells cols-count]
     cname       :cell/name}]
   (e/server
-   (let [cell-ent  (or (db/entity id) <cell-ent)
+   (let [cell-ent  (or #_(db/entity id) <cell-ent)
          schedule? (boolean schedule)
          {shed-text :schedule/text sched-next :schedule/next} schedule]
      (e/client
@@ -388,23 +398,24 @@
                                                                false))
                                               "esc" (do #_(.blur dom/node)
                                                      (.focus cell-node)))))
-                (dom/on "blur"
-                        (e/fn [e]
+                (dom/on
+                 "blur"
+                 (e/fn [e]
                                 ;; this only blur when the next active node is not the current node
                                 ;; i.e. it will not blur on tab switch, only when another node is focused
-                          (if (= dom/node (j/get js/document :activeElement))
-                            (.preventDefault e)
-                            (let [s (-> (j/get-in e [:target :value]) str/trim)]
+                   (if (= dom/node (j/get js/document :activeElement))
+                     (.preventDefault e)
+                     (let [s (-> (j/get-in e [:target :value]) str/trim)]
                                     ;; only run when code changed
-                              (if (= s form-str)
-                                (reset! !editor-cell-pos nil)
-                                (e/server
-                                 (let [txr (new eval-tx-cell!
-                                                {:cell    (assoc cell-ent :cell/form-str s)
-                                                 :eval-fn eval/fmt-eval-cell})]
-                                   (when txr
-                                     (e/client (reset! !editor-cell-pos nil))))
-                                 nil))))))))
+                       (if (= s form-str)
+                         (reset! !editor-cell-pos nil)
+                         (e/server
+                          (let [txr (new eval-tx-cell!
+                                         {:cell    (assoc  cell-ent :cell/form-str s)
+                                          :eval-fn eval/fmt-eval-cell})]
+                            (when txr
+                              (e/client (reset! !editor-cell-pos nil))))
+                          nil))))))))
              (dom/div
               (dom/props {:class ["gap-1" "flex" "justify-between" :p-1 :h-6]
                           :style {:min-width "4rem"}})

@@ -14,7 +14,9 @@
          metosin/reitit                 {:mvn/version "0.5.18"}
 
 
-         com.hyperfiddle/electric       {:mvn/version "v2-alpha-428-g22937f75"}
+         com.hyperfiddle/electric {#_#_:mvn/version "v2-alpha-428-g22937f75"
+                                   :git/url "https://github.com/hyperfiddle/electric"
+                                   :sha     "0a6966891c1b009fb808add868b72c8d37268296"}
          missionary/missionary          {:mvn/version "b.31"}
 
          info.sunng/ring-jetty9-adapter {:mvn/version "0.14.3"
@@ -26,8 +28,7 @@
          instaparse/instaparse          {:mvn/version "1.4.12"}
          ;borkdude/edamame {:mvn/version }
          datalevin/datalevin            {:mvn/version "0.8.19"}
-         webpush/webpush                {:mvn/version "0.1.0-SNAPSHOT"}
-         }
+         webpush/webpush                {:mvn/version "0.1.0-SNAPSHOT"}}
  :aliases
  {:prod {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
                     "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}
@@ -38,8 +39,7 @@
          :override-deps {stuffs/stuffs {:local/root "../../clojure/stuffs"}}
          :extra-deps    {org.clojure/clojurescript {:mvn/version "1.11.60"}
                          thheller/shadow-cljs      {:mvn/version "2.25.3"}
-                         binaryage/devtools        {:mvn/version "1.0.6"}}
-         }
+                         binaryage/devtools        {:mvn/version "1.0.6"}}}
   :demo {:jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
                     "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"]}
   :shadow-cljs

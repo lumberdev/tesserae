@@ -1,7 +1,7 @@
 (ns tesserae.ui.notif
   (:require [clojure.string :as str]
             [hyperfiddle.electric :as e]
-            [stuffs.env :as env :include-macros true]
+            [stuffs.env :as env]
             [stuffs.util :as su]
             [tesserae.ui.electric-util :as eu]
             [hyperfiddle.electric-dom2 :as dom]
@@ -14,8 +14,8 @@
 
 (e/def <notif-permission
   (e/client
-    (eu/<await-promise
-      (j/call js/Notification :requestPermission))))
+   (eu/<await-promise
+    (j/call js/Notification :requestPermission))))
 
 #?(:cljs
    (defn register-service-worker [path]
@@ -42,11 +42,11 @@
    (defn existing-registration [sw-path]
      (p/let [regs (registrations)]
        (su/ffilter
-         #(let [{:as sw :keys [state scriptURL]} (j/lookup (j/get % :active))]
-            (and
-              (= state "activated")
-              (str/includes? scriptURL sw-path)))
-         regs))))
+        #(let [{:as sw :keys [state scriptURL]} (j/lookup (j/get % :active))]
+           (and
+            (= state "activated")
+            (str/includes? scriptURL sw-path)))
+        regs))))
 
 #?(:cljs
    (defn existing-subscription [sw-path]
@@ -70,7 +70,7 @@
                                                    true
                                                    :applicationServerKey
                                                    (goog.crypt.base64/decodeStringToUint8Array server-public-key)})
-                         #_            (js/console.log "sub" subscription)
+                         #_(js/console.log "sub" subscription)
                          {:keys [status body]} (fetch/post "/app/notif/sub"
                                                            {:content-type :json
                                                             :accept       :json
@@ -78,12 +78,7 @@
                    (case status
                      200 (new-notif! {:title "Yield"
                                       :body  "Notifications Enabled"})
-                     (js/console.error "Could not persist notification to server")
-                     )
-                   )
-                 )
-
-               )]
+                     (js/console.error "Could not persist notification to server")))))]
        (p/try
          (p/let [sw           (j/get js/navigator :serviceWorker)
                  existing     (existing-registration sw-path)
@@ -119,22 +114,22 @@
 (e/defn Toggle []
   (e/server
     ;(when-let [has-subs? (:user/web-push-subs g/user-ent)])
-    (e/client
-      (let [[!existing-reg existing-reg] (eu/state (eu/<await-promise (existing-registration "/app/service-worker.js")))]
-        (dom/div
-          (dom/props {:class [:relative :gap-1 :flex "hover:bg-slate-200"]})
-          (dom/input
-            (dom/props {:type    "checkbox"
-                        :checked (boolean existing-reg)})
-            (dom/on
-              "click"
-              (e/fn [_]
-                (when-let [ret (eu/<await-promise
-                                 (if existing-reg
-                                   (j/call existing-reg :unregister)
-                                   (install-service-worker)))]
-                  (reset! !existing-reg
-                          (eu/<await-promise
-                            (existing-registration
-                              "/app/service-worker.js")))))))
-          (dom/text "Notifications on this device"))))))
+   (e/client
+    (let [[!existing-reg existing-reg] (eu/state (eu/<await-promise (existing-registration "/app/service-worker.js")))]
+      (dom/div
+       (dom/props {:class [:relative :gap-1 :flex "hover:bg-slate-200"]})
+       (dom/input
+        (dom/props {:type    "checkbox"
+                    :checked (boolean existing-reg)})
+        (dom/on
+         "click"
+         (e/fn [_]
+           (when-let [ret (eu/<await-promise
+                           (if existing-reg
+                             (j/call existing-reg :unregister)
+                             (install-service-worker)))]
+             (reset! !existing-reg
+                     (eu/<await-promise
+                      (existing-registration
+                       "/app/service-worker.js")))))))
+       (dom/text "Notifications on this device"))))))

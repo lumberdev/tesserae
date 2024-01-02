@@ -331,9 +331,17 @@
          :cell/evaled-at (t/inst (t/now))
          :cell/exception? (boolean exception))))))
 
+(defn empty-unnamed-refless-cell? [{id :db/id :as cell :cell/keys [name form-str _refs]}]
+  (boolean (and id (str/blank? form-str) (str/blank? name) (empty? _refs))))
+
+(defn retract-empty-unnamed-refless-cell!
+  ([tx-fn cell]
+   (when (empty-unnamed-refless-cell? cell)
+     (tx-fn [[:db/retractEntity (:db/id cell)]]))))
+
 (defn fmt-eval-cell [{:as cell :cell/keys [form-str]}]
   (if (str/blank? form-str)
-    (dissoc cell :cell/form-str :cell/ret-pending?)
+    (dissoc cell :cell/form-str :cell/ret :cell/ret-str :cell/ret-pending?)
     (let [{:as fmt-cell :cell/keys [exception?]} (fmt-cell-formstr cell)]
       (if exception?
         fmt-cell
@@ -413,7 +421,8 @@
 
 (comment
   (def sheet (db/entity 24))
-  (m/? (parallel-cells-eval-task {:cells          (:sheet/cells sheet)
+  (mapcat :sheet/cells (db/datoms->entities :ave :sheet/cells))
+  (m/? (parallel-cells-eval-task {:cells          (mapcat :sheet/cells (db/datoms->entities :ave :sheet/cells))
                                   :eval-fn        eval-cell
                                   :transact-cell! #(db/transact! [%])})))
 
@@ -548,7 +557,6 @@
            cancel)
   :stop (cell-notifs-listener))
 
-;(mount/start)
 
 
 (comment
@@ -586,7 +594,8 @@
                                      (m/amb)))))
                task           (m/reduce
                                (fn [out v]
-                                 #_(println ::refs-listener-evaled (:db/id v))
+                                 #_(tap> v)
+                                 (println ::refs-listener-evaled (:db/id v))
                                  (transact-cell! v))
                                []
                                eval-by-id)
@@ -679,10 +688,13 @@
   ;(:sheet/_cells (db/entity 6))
   (-> (db/entity 6) :cell/refs first :cell/ret-str))
 
-#_(d/listen! db/conn ::debug-listener
-             (fn [{:keys [tx-data]}]
+(comment
+  (d/listen! db/conn ::debug-listener
+             (fn [{:keys [tx-data tx-meta]}]
                (println :debug-listener)
-               (clojure.pprint/pprint tx-data)))
+               (clojure.pprint/pprint tx-meta)
+               (clojure.pprint/pprint (mapv (juxt :e :a :v :added) tx-data))))
+  (d/unlisten! db/conn ::debug-listener))
 
 
 (defn remove-empties []

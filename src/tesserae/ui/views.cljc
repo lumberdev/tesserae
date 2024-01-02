@@ -8,22 +8,20 @@
    [stuffs.js-interop :as j]
    [spyscope.core]
    [stuffs.keybind :as keybind]
-   [tesserae.ui.sheet :as sheet]
-   [tesserae.ui.sheet :as sh :include-macros true]
-   [tesserae.ui.panel :as panel :include-macros true]
-   [tesserae.ui.electric-util :as eu :include-macros true]
-   [tesserae.ui.typeahead :refer [Typeahead] :include-macros true]
-   [tesserae.ui.popup :as popup :include-macros true]
+   [tesserae.ui.sheet :as sh]
+   [tesserae.ui.panel :as panel]
+   [tesserae.ui.electric-util]
+   [tesserae.ui.typeahead :refer [Typeahead]]
+   [tesserae.ui.popup :as popup]
    [tesserae.ui.globals :as g]
    [tesserae.ui.vega :as ui.vega]
-   [tesserae.ui.notif :as notif :include-macros true]
+   [tesserae.ui.notif :as notif]
    [stuffs.route :as route]
    [stuffs.util :as su]
    [tesserae.serialize]
    #?@(:clj [[datalevin.core :as d]
              [stuffs.datalevin.util :as sdu]
-             [tesserae.db :as db]]))
-  #?(:cljs (:require-macros tesserae.ui.views)))
+             [tesserae.db :as db]])))
 
 #?(:clj
    (defn search-cell-names->ent [db q]
@@ -243,11 +241,7 @@
               :panel (e/server (new panel/Entrypoint <ent))
               :cell (dom/div
                      (dom/props {:class [:flex :justify-center :p-2 :overflow-auto]})
-                     (e/server (new sheet/EditableCell <ent))))))))
-
-      (dom/div
-       (dom/props {:class [:text-2xl]})
-       (dom/text "not found"))))))
+                     (e/server (new sh/EditableCell <ent))))))))))))
 
 ;; *** debugging views
 
@@ -263,8 +257,12 @@
    (reset! dbg-vl (some-> x su/write-json-string)) :done))
 
 (defn cleardbg []
+  (setxx nil)
   (sethtml nil)
   (setvl nil))
+
+(comment
+  (cleardbg))
 
 (e/defn AtomPre [label a]
   (let [v  (e/watch a)

@@ -2,7 +2,7 @@
   (:require [hyperfiddle.electric :as e]
             [hyperfiddle.electric-dom2 :as dom]
             [stuffs.dom :as sdom]
-            [tesserae.ui.electric-util :as eu :include-macros true :refer-macros [state]]))
+            [tesserae.ui.electric-util :as eu]))
 
 (e/defn TriangleAnchor [{:keys [css-class css-style]
                          :or   {css-style {}}}]
