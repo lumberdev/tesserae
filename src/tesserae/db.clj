@@ -73,7 +73,7 @@
                (d/create-conn (db-dir)
                               schema
                               {:auto-entity-time? true
-                               :validate-data?    env/dev?})]
+                               :validate-data?    true #_env/dev?})]
            (def entity
              (sdu/make-entity conn env/dev?))
            (def datoms (sdu/make-datoms conn))
