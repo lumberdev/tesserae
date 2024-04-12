@@ -227,7 +227,8 @@
 (e/defn Route []
   (e/client
    (dom/div
-    (dom/props {:style {:height "calc(100vh - 30px)"}})
+    (dom/props {:class [:flex :flex-col]
+                :style {:height "calc(100vh - 30px)"}})
     (case g/route
       :home (new Recents)
 
@@ -240,7 +241,7 @@
               :sheet (e/server (new sh/Entrypoint <ent))
               :panel (e/server (new panel/Entrypoint <ent))
               :cell (dom/div
-                     (dom/props {:class [:flex :justify-center :p-2 :overflow-auto]})
+                     (dom/props {:class [:flex :justify-center :p-2 :overflow-auto :h-full]})
                      (e/server (new sh/EditableCell <ent))))))))))))
 
 ;; *** debugging views
