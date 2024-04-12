@@ -43,14 +43,16 @@
         (m/relieve {})
         new)))
 
-(e/defn Main []
-  (e/client
-   (binding [dom/node (dom/by-id "root")]
-     (let [{:as match :keys [data query-params path-params]} re-router]
-       (binding [g/route-match match
-                 g/route       (get data :name)]
-         (set-page-title! match)
-         (new views/App))))))
+(e/defn Main [user-ent]
+  (binding [g/user-ent user-ent
+            g/user-eid (:db/id user-ent)]
+    (e/client
+     (binding [dom/node (dom/by-id "root")]
+       (let [{:as match :keys [data query-params path-params]} re-router]
+         (binding [g/route-match match
+                   g/route       (get data :name)]
+           (set-page-title! match)
+           (new views/App)))))))
 
 #?(:cljs
    (def boot-client

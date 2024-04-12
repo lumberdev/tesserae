@@ -29,9 +29,9 @@
        (let [pat (re-pattern (str "\\b" q "\\w*"))]
          (sequence
           (comp
-           (filter (fn [{:keys [v]}]
+            (filter (fn [{:keys [v]}]
                      (re-find pat v)))
-           (map db/entity))
+            (map db/entity))
           (d/datoms db :ave :cell/name))))))
 
 #?(:clj
@@ -41,19 +41,19 @@
          (not-empty
           (sequence
            (comp
-            (mapcat #(db/datoms :ave %))
-            (filter (fn [{:keys [v]}]
+             (mapcat #(db/datoms :ave %))
+             (filter (fn [{:keys [v]}]
                       (re-find pat v)))
-            (map db/entity))
+             (map db/entity))
            attrs))))))
 
 #?(:clj
    (defn recent-attrs->ents [attrs]
-     (not-empty
-      (sequence
-       (comp (map db/entity)
+         (not-empty
+           (sequence
+             (comp (map db/entity)
              (filter #(some % attrs)))
-       (reverse (db/datoms :ave :db/updated-at))))))
+             (reverse (db/datoms :ave :db/updated-at))))))
 
 #?(:clj
    (defn search-or-recent->ents [attrs q]
@@ -188,7 +188,7 @@
                            :label-after-first-click "are you sure?"
                            :on-click                (e/fn [_]
                                                       (e/server
-                                                       (db/transact! [[:db/retractEntity eid]]) nil)
+                                                        (db/transact! [[:db/retractEntity eid]]) nil)
                                                       (e/client
                                                        (route/push-state :home)))}]}))))))
     (e/server
@@ -297,8 +297,6 @@
    (dom/div
     (dom/props {:class [:flex :flex-col :w-100vw :h-100vh :overflow-hidden]})
     (e/server
-     (binding [g/db (new (eu/async-watch db/conn))
-               g/user-ent  db/*user-ent*
-               g/user-eid (:db/id db/*user-ent*)]
+     (binding [g/db (new (eu/async-watch db/conn))]
        (new Nav)
        (new Route))))))
