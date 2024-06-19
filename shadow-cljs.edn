@@ -2,11 +2,14 @@
 {:deps     {:aliases [:dev/cljs :dev]}
  :jvm-opts ["-Xss3m"]
  :builds
- {:tesserae {:target     :browser
-             :output-dir "resources/public/js/compiled"
-             :asset-path "/js/compiled"
-
-             :modules    {:main {:entries [tesserae.ui.app]}}
+ {:tesserae {:target            :browser
+             :output-dir        "resources/public/js/compiled"
+             :asset-path        "/js/compiled"
+             :module-hash-names true
+             :modules           {:main {:entries [tesserae.ui.app]
+                                        #_#_:init-fn tesserae.ui.app/start}}
+             :release           {:build-options {:cache-level :off}}
+             :build-hooks       [(hyperfiddle.electric.shadow-cljs.hooks/reload-clj)]
 
              :devtools
              {

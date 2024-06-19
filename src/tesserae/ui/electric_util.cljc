@@ -6,7 +6,13 @@
             [stuffs.route]
             [stuffs.dom :as sdom]
             [contrib.missionary-contrib :as mx]
-            [clojure.core :as cc]))
+            [clojure.core :as cc])
+  (:import (missionary Cancelled)))
+
+(defn debounce [delay flow]
+  (m/ap (let [x (m/?< flow)]
+          (try (m/? (m/sleep delay x))
+               (catch Cancelled _ (m/amb))))))
 
 (defmacro state-from-atom [atm]
   `(do [~atm (e/watch ~atm)]))
@@ -48,6 +54,8 @@
 (e/def <copy
   (e/client
    (listen-and-observe js/document "copy")))
+
+;(declare <window-focus)
 
 (e/def <window-focus
   (e/client

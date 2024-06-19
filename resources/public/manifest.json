@@ -1,0 +1,12 @@
+{
+  "name": "Tesserae",
+  "start_url": "/app",
+  "icons": [
+    {
+      "src": "icon.webp",
+      "sizes": "48x48",
+      "type": "image/webp"
+    }
+  ],
+  "display": "standalone"
+}

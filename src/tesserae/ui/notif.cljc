@@ -14,8 +14,8 @@
 
 (e/def <notif-permission
   (e/client
-   (eu/<await-promise
-    (j/call js/Notification :requestPermission))))
+    (eu/<await-promise
+      (j/call js/Notification :requestPermission))))
 
 #?(:cljs
    (defn register-service-worker [path]
@@ -42,11 +42,11 @@
    (defn existing-registration [sw-path]
      (p/let [regs (registrations)]
        (su/ffilter
-        #(let [{:as sw :keys [state scriptURL]} (j/lookup (j/get % :active))]
-           (and
-            (= state "activated")
-            (str/includes? scriptURL sw-path)))
-        regs))))
+         #(let [{:as sw :keys [state scriptURL]} (j/lookup (j/get % :active))]
+            (and
+              (= state "activated")
+              (str/includes? scriptURL sw-path)))
+         regs))))
 
 #?(:cljs
    (defn existing-subscription [sw-path]
@@ -76,7 +76,7 @@
                                                             :accept       :json
                                                             :body         subscription})]
                    (case status
-                     200 (new-notif! {:title "Yield"
+                     200 (new-notif! {:title (or (env/get "AppName") "Tesserae")
                                       :body  "Notifications Enabled"})
                      (js/console.error "Could not persist notification to server")))))]
        (p/try

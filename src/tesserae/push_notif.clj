@@ -1,5 +1,6 @@
 (ns tesserae.push-notif
-  (:require [stuffs.util :as su]
+  (:require [clojure.set :as set]
+            [stuffs.util :as su]
             [webpush.core :as wp]
             [webpush.utils :as wu]
             [mount.core :as mount :refer [defstate]]
@@ -14,11 +15,20 @@
   )
 
 (defstate ^{:on-reload :noop} service
-  :start (do
+  :start (let [public-k  (env/get :web-push-public-key)
+               private-k (env/get :web-push-private-key)]
+           (su/ascertain (and public-k private-k)
+                         (str "Push notif keys missing!\n"
+                              "Add the following to your env and restart the process\n\n"
+                              (su/pretty-string
+                                (set/rename-keys (wu/generate-keys)
+                                                 {:public  :web-push-public-key
+                                                  :private :web-push-private-key}))
+                              ))
            (wp/add-security-provider!)
            (wp/service
-             (env/get :web-push-public-key)
-             (env/get :web-push-private-key)
+             public-k
+             private-k
              "mailto:dennis@lumber.dev")))
 
 ;(map :v (db/datoms :ave :user/web-push-subs))
@@ -55,8 +65,7 @@
 
 (defn cell->notif-m [{:as cell id :db/id :cell/keys [name ret-str]}]
   {:title (str
-            (-> (db/entity 21) :sheet/_cells :sheet/name) ": "
-            (or name id) " updated")
+            (-> (db/entity id) :sheet/_cells :sheet/name) "/" (or name id))
    :body  ret-str
    :icon  "/img/yield-icon512.png"
    :data  {:routeTo (str "/app/cell/" id)}})
