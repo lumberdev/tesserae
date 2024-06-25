@@ -14,6 +14,7 @@
     [tesserae.autoformat :as af]
     [cljfmt.core :as cfmt]
     [stuffs.util :as su]
+    [stuffs.http]
     [net.cgrand.xforms :as x]
     [sci.impl.utils :as sci-utils]
     [tesserae.ui.sheet :as-alias ui.sheet]
@@ -59,13 +60,36 @@
          {:sheet/keys [cols-count rows-count] :as sheet} (db/entity sheet-id)
          [nx ny :as pos] (move dir x y cols-count rows-count)]
      (or
-      (add-*ref-ids*!
-       (db/where-entity
-        [[sheet-id :sheet/cells '?e]
-         ['?e :cell/pos [nx ny]]]))
-      {:sheet/_cells sheet
-       :cell/x       nx
-       :cell/y       ny}))))
+       (add-*ref-ids*!
+         (db/where-entity
+           [[sheet-id :sheet/cells '?e]
+            ['?e :cell/pos [nx ny]]]))
+       {:sheet/_cells sheet
+        :cell/x       nx
+        :cell/y       ny}))))
+
+(comment
+  (:cell/form-str (sdu/where-entity
+                    @db/conn
+                    [[16 :sheet/cells '?e]
+                     ['?e :cell/name "num"]]))
+  (map :db/id (:sheet/cells (db/entity 16)))
+
+  (sdu/where-entity
+    @db/conn
+    [[16 :sheet/cells '?e]
+     ['?e :cell/name "num"]])
+
+  (db/q '{:find  [?e]
+          :where [[5 :sheet/cells ?e]
+                  [?e :cell/name ?n]
+                  [(= "num" ?n)]
+                  ]})
+
+
+
+
+  (:cell/refs (db/entity 18)))
 
 (defn sheet-fns [conn]
   (letfn [(cell-by-name
@@ -187,13 +211,14 @@
                {'help (constantly
                         {:namespaces
                          (update-vals nss keys)})}
-               (bindings {'slurp    slurp
-                          'eval     eval-form-or-str
-                          'sleep    (fn [ms] (Thread/sleep ms))
-                          'println  println
-                          'tap>     tap>
-                          '*cell*   sci-*cell*
-                          '*cb-str* sci-*cb-str*})
+               (bindings {'slurp                 slurp
+                          'eval                  eval-form-or-str
+                          'sleep                 (fn [ms] (Thread/sleep ms))
+                          'println               println
+                          'tap>                  tap>
+                          'http-clear-ttl-cache! stuffs.http/clear-request-ttl-cache!
+                          '*cell*                sci-*cell*
+                          '*cb-str*              sci-*cb-str*})
                (some-> (mount/args) ::bindings bindings))]
     (sci/init
       {:bindings   bdgs

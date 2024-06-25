@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
  :deps  {org.clojure/clojure            {:mvn/version "1.11.3"}
          stuffs/stuffs                  {:git/url "https://github.com/den1k/stuffs"
-                                         :sha     "f46f03469a56912c645b6ab1a2464c83fac25030"}
+                                         :sha     "7b39d05eb5349eb677454f3851ae28e178286d57"}
 
          http-kit/http-kit              {:mvn/version "2.8.0"}
          ring/ring-core                 {:mvn/version "1.11.0"}

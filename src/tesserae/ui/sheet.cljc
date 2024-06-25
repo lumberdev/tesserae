@@ -77,24 +77,26 @@
 (e/defn eval-tx-cell! [{:keys [cell eval-fn timeout] :as opts}]
   (let [cb-str eu/clipboard-on-window-focus]
     (e/server
-     (let [tx-fn #(db/transact! % {:transacted-by ::cell})]
-       (or
-        (eval/retract-empty-unnamed-refless-cell! tx-fn cell)
-        ;; FIXME not setting to pending as it causes a weird circular reactive issue 
-        (let [#_(tx-fn [(assoc cell :cell/ret-pending? true)])
-              opts   (cond-> opts (nil? eval-fn) (assoc :eval-fn eval/eval-cell))
-              result  (new
-                       (e/task->cp
-                        (eval/eval-cell-task
-                         (update
-                          opts
-                          :eval-fn (fn [eval-f]
-                                     (fn [cell]
-                                       (binding
-                                        [eval.vars/*cb-str* cb-str]
-                                         (eval-f cell))))))))]
-          (tx-fn [result]))))
-     true)))
+      (let [tx-fn #(db/transact! % {:transacted-by ::cell})]
+        (or
+          (eval/retract-empty-unnamed-refless-cell! tx-fn cell)
+          ;; FIXME not setting to pending as it causes a weird circular reactive issue
+          (let [#_#_cell-id (:db/id cell)
+                #_ (when cell-id (tx-fn [{:db/id cell-id :cell/ret-pending? true}]))
+                #_ (println :running cell-id)
+                opts   (cond-> opts (nil? eval-fn) (assoc :eval-fn eval/eval-cell))
+                result (new
+                         (e/task->cp
+                           (eval/eval-cell-task
+                             (update
+                               opts
+                               :eval-fn (fn [eval-f]
+                                          (fn [cell]
+                                            (binding
+                                              [eval.vars/*cb-str* cb-str]
+                                              (eval-f cell))))))))]
+            (tx-fn [result]))))
+      true)))
 
 
 (defn arrow-pos-fn! [cols-count rows-count]
@@ -149,7 +151,7 @@
                              (dom/text ret-str))))
             ret
             (cond
-              (or (number? ret) (string? ret)) (e/client (dom/div
+              (or (number? ret) (string? ret) (keyword? ret)) (e/client (dom/div
                                                            (dom/props {:class [:max-w-screen-sm :max-h-96 :overflow-auto]})
                                                            (dom/text (str ret))))
               (= :vegalite (uir/content-type ret)) (new ui.vega/VegaLiteEmbed (uir/value ret))
@@ -237,7 +239,7 @@
 (e/defn CellAnchorMenu [{:as <cell-ent :keys [db/id] :cell/keys [evaled-at eval-upon notify-on-ret schedule ret]}
                         {:keys [set-edit-schedule]}]
   (e/server
-    (let [cell-ent  (or (db/entity id) <cell-ent)
+    (let [cell-ent  (or #_(db/entity id) <cell-ent)
           schedule? (boolean schedule)
           {shed-text :schedule/text sched-next :schedule/next} schedule]
       (e/client
